@@ -1,3 +1,0 @@
-Correo de recordatorio 2 horas antes de la cita pero modificable el tiempo en admin
-    Hostinger Cron: */30 * * * * /usr/bin/php /ruta/completa/a/recordatorio_citas.php >> /ruta/completa/a/logs/recordatorio.log 2>&1
-
