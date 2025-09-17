@@ -1,14 +1,15 @@
 <?php
-require_once '../config/config.php';
+chdir(__DIR__ . '/..');
+require_once 'config/config.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
 // Include PHPMailer files
-require_once '../vendor/phpmailer/phpmailer/src/Exception.php';
-require_once '../vendor/phpmailer/phpmailer/src/PHPMailer.php';
-require_once '../vendor/phpmailer/phpmailer/src/SMTP.php';
+require_once 'vendor/phpmailer/phpmailer/src/Exception.php';
+require_once 'vendor/phpmailer/phpmailer/src/PHPMailer.php';
+require_once 'vendor/phpmailer/phpmailer/src/SMTP.php';
 
 class EmailService {
     private $config;

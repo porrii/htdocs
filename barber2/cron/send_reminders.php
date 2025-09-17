@@ -4,10 +4,10 @@
  * Add this to your crontab to run every hour:
  * 0 * * * * /usr/bin/php /path/to/your/project/cron/send_reminders.php
  */
-
-require_once '../config/config.php';
-require_once '../config/database.php';
-require_once '../classes/EmailService.php';
+chdir(__DIR__ . '/..');
+require_once 'config/config.php';
+require_once 'config/database.php';
+require_once 'classes/EmailService.php';
 
 $database = new Database();
 $db = $database->getConnection();
