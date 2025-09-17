@@ -1,0 +1,9 @@
+"Configuracion", preferencias del sistema e informacion del sistema sin implementar
+En AddDevice modificar funcion y modal para que puedas introducir autoriego(si/no) y umbral de humedad y envíe a bd y mqtt
+No se guarda el riego auto en bd
+Historial no se actualiza al instante al activar riego
+
+Modificar web para que la Configuracion solo sea en topic 'config' y se envíe: {"device":"ARD1","auto":true, ""threshold":59}
+
+Al cambiar umbral de humedad en index se envía a mqtt pero no a la bd
+

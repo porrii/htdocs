@@ -1,0 +1,48 @@
+INSTRUCCIONES DE INSTALACIÓN - SISTEMA DE BARBERÍA
+================================================
+
+1. CONFIGURACIÓN DE BASE DE DATOS:
+   - Ejecutar los scripts SQL en orden:
+     * scripts/01_create_database.sql
+     * scripts/02_insert_default_data.sql
+     * scripts/03_create_cron_job.sql
+
+2. CONFIGURACIÓN DE PHPMAILER:
+   - Instalar PHPMailer usando Composer:
+     composer install
+   
+   - O descargar manualmente PHPMailer y colocar en:
+     vendor/phpmailer/phpmailer/
+
+3. CONFIGURACIÓN DE CORREOS:
+   - Acceder al panel de administración: /admin/
+   - Usuario: admin
+   - Contraseña: admin123
+   - Ir a "Configuración" y configurar SMTP:
+     * Host SMTP (ej: smtp.gmail.com)
+     * Puerto (ej: 587)
+     * Usuario SMTP (tu email)
+     * Contraseña SMTP (contraseña de aplicación)
+     * Encriptación (TLS/SSL)
+
+4. CONFIGURACIÓN DE CRON JOB (para recordatorios automáticos):
+   - Agregar al crontab del servidor:
+     0 9 * * * /usr/bin/php /ruta/completa/al/proyecto/cron/send_reminders.php
+
+5. PERMISOS DE CARPETAS:
+   - uploads/products/ (lectura/escritura)
+   - logs/ (lectura/escritura)
+
+6. CREDENCIALES POR DEFECTO:
+   - Panel Admin: admin / admin123
+   - Cambiar credenciales después de la instalación
+
+FUNCIONALIDADES INCLUIDAS:
+- Sistema de reservas con disponibilidad en tiempo real
+- Emails automáticos (confirmación, recordatorio 24h antes, cancelación)
+- Panel de administración completo
+- Gestión de servicios, productos, videos y horarios
+- Sistema de horarios flexible (mañana/tarde/completo/cerrado)
+- Subida de fotos para productos
+- Configuración SMTP desde el panel admin
+- Sistema de logs para emails enviados
