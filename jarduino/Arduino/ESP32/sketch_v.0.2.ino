@@ -515,44 +515,66 @@ void drawStatusBar() {
 void renderMainDashboard() {
   u8g2.setFont(u8g2_font_6x10_tr);
   
-  // Temperatura y Humedad en una línea
-  u8g2.setCursor(0, 20);
+  // Título
+  u8g2.drawFrame(0, 16, 128, 16);
+  u8g2.setCursor(5, 27);
+  u8g2.print("SMART GARDEN");
+  
+  // Separador
+  u8g2.drawHLine(0, 34, 128);
+  
+  // Temperatura con icono
+  u8g2.setCursor(5, 45);
   u8g2.print("T:");
-  u8g2.print(isnan(dht.readTemperature()) ? "--" : String(dht.readTemperature(), 1));
-  u8g2.print("C  H:");
-  u8g2.print(isnan(dht.readHumidity()) ? "--" : String(dht.readHumidity(), 1));
+  float temp = dht.readTemperature();
+  u8g2.print(isnan(temp) ? "--" : String(temp, 1));
+  u8g2.print("C");
+  
+  // Humedad con icono
+  u8g2.setCursor(65, 45);
+  u8g2.print("H:");
+  float hum = dht.readHumidity();
+  u8g2.print(isnan(hum) ? "--" : String(hum, 1));
   u8g2.print("%");
-
-  // Humedad del suelo con indicador numérico
+  
+  // Humedad del suelo - visualización mejorada
   int soil = readSoilPct();
-  u8g2.setCursor(0, 35);
-  u8g2.print("Suelo: ");
+  u8g2.setCursor(5, 57);
+  u8g2.print("Suelo:");
+  
+  // Barra de humedad visual
+  int barWidth = map(soil, 0, 100, 0, 40);
+  u8g2.drawFrame(45, 55, 42, 10);
+  u8g2.drawBox(45, 55, barWidth, 10);
+  
+  // Porcentaje numérico
+  u8g2.setCursor(90, 57);
+  if (soil < 10) u8g2.print(" ");
+  if (soil < 100) u8g2.print(" ");
   u8g2.print(soil);
   u8g2.print("%");
   
-  // Indicador visual simple (sin barra de progreso)
-  u8g2.setCursor(70, 35);
-  if (soil < 30) u8g2.print("SECO");
-  else if (soil < 60) u8g2.print("OK");
-  else u8g2.print("HUMEDO");
-
-  // Estado de la bomba
-  u8g2.setCursor(0, 50);
-  u8g2.print("Bomba: ");
-  u8g2.print(pumpActive ? "ON " : "OFF");
+  // Estado de la bomba con icono
+  u8g2.setFont(u8g2_font_5x8_tr);
+  u8g2.setCursor(5, 68);
+  u8g2.print("Bomba:");
+  u8g2.setFont(u8g2_font_6x10_tr);
+  u8g2.setCursor(45, 68);
   if (pumpActive) {
-    u8g2.print(" (");
+    u8g2.print("ON ");
     u8g2.print((pumpDurationMs - (millis() - pumpStartMs)) / 1000);
-    u8g2.print("s)");
+    u8g2.print("s");
+  } else {
+    u8g2.print("OFF");
   }
-
-  // Modo auto
-  u8g2.setCursor(0, 63);
-  u8g2.print("Auto: ");
+  
+  // Modo auto y umbral
+  u8g2.setFont(u8g2_font_5x8_tr);
+  u8g2.setCursor(85, 68);
+  u8g2.print("Auto:");
+  u8g2.setFont(u8g2_font_6x10_tr);
+  u8g2.setCursor(120, 68);
   u8g2.print(cfg.autoIrrigation ? "ON" : "OFF");
-  u8g2.print(" Umbral:");
-  u8g2.print(cfg.soilThreshold);
-  u8g2.print("%");
 }
 
 void renderSensorsPage() {
@@ -601,68 +623,94 @@ void renderIrrigationPage() {
 void renderMenu() {
   u8g2.setFont(u8g2_font_6x10_tr);
   
-  // Mostrar hasta 4 elementos con indicador de scroll
-  int startIdx = (menuIndex > 2) ? menuIndex - 2 : 0;
-  int endIdx = min(startIdx + 4, PAGE_COUNT);
-  
+  // Título del menú
   u8g2.setCursor(0, 15);
-  for (int i = startIdx; i < endIdx; i++) {
+  u8g2.print("MENU PRINCIPAL");
+  u8g2.drawHLine(0, 17, 128);
+  
+  // Mostrar hasta 4 elementos con scroll
+  int startIdx = 0;
+  int visibleItems = 4;
+  
+  if (menuIndex >= visibleItems) {
+    startIdx = menuIndex - visibleItems + 1;
+  }
+  
+  int yPos = 25;
+  for (int i = startIdx; i < min(startIdx + visibleItems, PAGE_COUNT); i++) {
     if (i == menuIndex) {
       u8g2.print("> ");
     } else {
       u8g2.print("  ");
     }
+    u8g2.setCursor(10, yPos);
     u8g2.println(menuItems[i]);
-    
-    // Indicador de scroll si hay más elementos
-    if (i == endIdx-1 && endIdx < PAGE_COUNT) {
-      u8g2.setCursor(120, 63);
-      u8g2.print("▼");
-    } else if (startIdx > 0 && i == startIdx) {
-      u8g2.setCursor(120, 15);
-      u8g2.print("▲");
-    }
+    yPos += 12;
+  }
+  
+  // Indicadores de scroll
+  if (startIdx > 0) {
+    u8g2.setCursor(120, 25);
+    u8g2.print("▲");
+  }
+  
+  if (startIdx + visibleItems < PAGE_COUNT) {
+    u8g2.setCursor(120, 64);
+    u8g2.print("▼");
   }
 }
 
 void renderSettings() {
   u8g2.setFont(u8g2_font_6x10_tr);
   
-  // Mostrar hasta 4 elementos con indicador de scroll
-  int startIdx = (settingsPage > 2) ? settingsPage - 2 : 0;
-  int endIdx = min(startIdx + 4, SETTINGS_COUNT);
-  
+  // Título
   u8g2.setCursor(0, 15);
-  for (int i = startIdx; i < endIdx; i++) {
+  u8g2.print("CONFIGURACION");
+  u8g2.drawHLine(0, 17, 128);
+  
+  int startIdx = 0;
+  int visibleItems = 4;
+  
+  if (settingsPage >= visibleItems) {
+    startIdx = settingsPage - visibleItems + 1;
+  }
+  
+  int yPos = 25;
+  for (int i = startIdx; i < min(startIdx + visibleItems, SETTINGS_COUNT); i++) {
     if (i == settingsPage) {
       u8g2.print("> ");
     } else {
       u8g2.print("  ");
     }
+    u8g2.setCursor(10, yPos);
     u8g2.print(settingsItems[i]);
     
+    // Mostrar valores actuales
     if (i == SETTINGS_AUTO) {
-      u8g2.print(": ");
+      u8g2.setCursor(90, yPos);
       u8g2.print(cfg.autoIrrigation ? "ON" : "OFF");
     } else if (i == SETTINGS_THRESHOLD) {
-      u8g2.print(": ");
+      u8g2.setCursor(90, yPos);
       u8g2.print(cfg.soilThreshold);
       u8g2.print("%");
     } else if (i == SETTINGS_DURATION) {
-      u8g2.print(": ");
+      u8g2.setCursor(90, yPos);
       u8g2.print(cfg.irrigationDuration);
       u8g2.print("s");
     }
-    u8g2.println();
     
-    // Indicador de scroll si hay más elementos
-    if (i == endIdx-1 && endIdx < SETTINGS_COUNT) {
-      u8g2.setCursor(120, 63);
-      u8g2.print("▼");
-    } else if (startIdx > 0 && i == startIdx) {
-      u8g2.setCursor(120, 15);
-      u8g2.print("▲");
-    }
+    yPos += 12;
+  }
+  
+  // Indicadores de scroll
+  if (startIdx > 0) {
+    u8g2.setCursor(120, 25);
+    u8g2.print("▲");
+  }
+  
+  if (startIdx + visibleItems < SETTINGS_COUNT) {
+    u8g2.setCursor(120, 64);
+    u8g2.print("▼");
   }
 }
 
@@ -804,8 +852,9 @@ void checkAutoIrrigation() {
   lastCheck = millis();
   
   int soil = readSoilPct();
+  // CORRECCIÓN: Activar cuando la humedad está POR DEBAJO del umbral
   if (soil < cfg.soilThreshold) {
-    log(INFO, "Iniciando riego automático. Humedad: " + String(soil) + "%");
+    log(INFO, "Iniciando riego automático. Humedad: " + String(soil) + "%, Umbral: " + String(cfg.soilThreshold) + "%");
     setRelay(true);
     pumpStartMs = millis();
     pumpDurationMs = cfg.irrigationDuration * 1000UL;
@@ -816,6 +865,7 @@ void checkAutoIrrigation() {
       doc["device"] = cfg.deviceId;
       doc["event"] = "auto_irrigation";
       doc["soil"] = soil;
+      doc["threshold"] = cfg.soilThreshold;
       
       char payload[128];
       serializeJson(doc, payload);
@@ -942,134 +992,42 @@ void loop() {
   }
 
   // Navegación con botones
-  if (millis() - lastButtonCheck > buttonCheckInterval) {
-    lastButtonCheck = millis();
-    
-    if (readButton(BTN_UP)) {
-      switch (currentPage) {
-        case PAGE_MAIN_DASHBOARD: break;
-        case PAGE_SENSORS: break;
-        case PAGE_IRRIGATION: break;
-        case PAGE_SETTINGS: settingsPage = (SettingsPage)((settingsPage + SETTINGS_COUNT - 1) % SETTINGS_COUNT); break;
-        case PAGE_NETWORK: networkPage = (NetworkPage)((networkPage + NETWORK_COUNT - 1) % NETWORK_COUNT); break;
-        case PAGE_SYSTEM: systemPage = (SystemPage)((systemPage + SYSTEM_COUNT - 1) % SYSTEM_COUNT); break;
-      }
-      renderPage();
-      delay(200);
+  if (readButton(BTN_UP)) {
+    switch (currentPage) {
+      case PAGE_MAIN_DASHBOARD: break;
+      case PAGE_SENSORS: break;
+      case PAGE_IRRIGATION: break;
+      case PAGE_SETTINGS: 
+        settingsPage = (SettingsPage)((settingsPage - 1 + SETTINGS_COUNT) % SETTINGS_COUNT);
+        break;
+      case PAGE_NETWORK: 
+        networkPage = (NetworkPage)((networkPage - 1 + NETWORK_COUNT) % NETWORK_COUNT);
+        break;
+      case PAGE_SYSTEM: 
+        systemPage = (SystemPage)((systemPage - 1 + SYSTEM_COUNT) % SYSTEM_COUNT);
+        break;
     }
-    
-    if (readButton(BTN_DOWN)) {
-      switch (currentPage) {
-        case PAGE_MAIN_DASHBOARD: break;
-        case PAGE_SENSORS: break;
-        case PAGE_IRRIGATION: break;
-        case PAGE_SETTINGS: settingsPage = (SettingsPage)((settingsPage + 1) % SETTINGS_COUNT); break;
-        case PAGE_NETWORK: networkPage = (NetworkPage)((networkPage + 1) % NETWORK_COUNT); break;
-        case PAGE_SYSTEM: systemPage = (SystemPage)((systemPage + 1) % SYSTEM_COUNT); break;
-      }
-      renderPage();
-      delay(200);
+    renderPage();
+    delay(200);
+  }
+
+  if (readButton(BTN_DOWN)) {
+    switch (currentPage) {
+      case PAGE_MAIN_DASHBOARD: break;
+      case PAGE_SENSORS: break;
+      case PAGE_IRRIGATION: break;
+      case PAGE_SETTINGS: 
+        settingsPage = (SettingsPage)((settingsPage + 1) % SETTINGS_COUNT);
+        break;
+      case PAGE_NETWORK: 
+        networkPage = (NetworkPage)((networkPage + 1) % NETWORK_COUNT);
+        break;
+      case PAGE_SYSTEM: 
+        systemPage = (SystemPage)((systemPage + 1) % SYSTEM_COUNT);
+        break;
     }
-    
-    if (readButton(BTN_LEFT)) {
-      currentPage = (MenuPage)((currentPage + PAGE_COUNT - 1) % PAGE_COUNT);
-      renderPage();
-      delay(200);
-    }
-    
-    if (readButton(BTN_RIGHT)) {
-      currentPage = (MenuPage)((currentPage + 1) % PAGE_COUNT);
-      renderPage();
-      delay(200);
-    }
-    
-    if (readButton(BTN_OK)) {
-      switch (currentPage) {
-        case PAGE_MAIN_DASHBOARD:
-          // No action
-          break;
-        case PAGE_SENSORS:
-          // No action
-          break;
-        case PAGE_IRRIGATION:
-          if (pumpActive) {
-            setRelay(false);
-          } else {
-            setRelay(true);
-            pumpStartMs = millis();
-            pumpDurationMs = cfg.irrigationDuration * 1000UL;
-          }
-          break;
-        case PAGE_SETTINGS:
-          switch (settingsPage) {
-            case SETTINGS_AUTO:
-              cfg.autoIrrigation = !cfg.autoIrrigation;
-              saveConfig();
-              break;
-            case SETTINGS_THRESHOLD:
-              cfg.soilThreshold = (cfg.soilThreshold + 5) % 100;
-              if (cfg.soilThreshold < 10) cfg.soilThreshold = 10;
-              saveConfig();
-              break;
-            case SETTINGS_DURATION:
-              cfg.irrigationDuration = (cfg.irrigationDuration + 5) % 120;
-              if (cfg.irrigationDuration < 5) cfg.irrigationDuration = 5;
-              saveConfig();
-              break;
-            case SETTINGS_DEVICE_ID:
-              startEdit(cfg.deviceId, sizeof(cfg.deviceId));
-              break;
-            case SETTINGS_COUNT:
-              currentPage = PAGE_MAIN_DASHBOARD;
-              break;
-          }
-          break;
-        case PAGE_NETWORK:
-          switch (networkPage) {
-            case NETWORK_WIFI_SSID:
-              startEdit(cfg.ssid, sizeof(cfg.ssid));
-              break;
-            case NETWORK_WIFI_PASS:
-              startEdit(cfg.pass, sizeof(cfg.pass));
-              break;
-            case NETWORK_MQTT_SERVER:
-              startEdit(cfg.mqttServer, sizeof(cfg.mqttServer));
-              break;
-            case NETWORK_MQTT_PORT:
-              cfg.mqttPort = (cfg.mqttPort + 100) % 10000;
-              if (cfg.mqttPort < 1883) cfg.mqttPort = 1883;
-              saveConfig();
-              break;
-            case NETWORK_RECONNECT:
-              reconnectWiFi();
-              break;
-            case NETWORK_COUNT:
-              currentPage = PAGE_MAIN_DASHBOARD;
-              break;
-          }
-          break;
-        case PAGE_SYSTEM:
-          switch (systemPage) {
-            case SYSTEM_SAVE:
-              saveConfig();
-              if (wifiConnected) publishConfig();
-              break;
-            case SYSTEM_CLEAR_CONFIG:
-              prefs.clear();
-              ESP.restart();
-              break;
-            case SYSTEM_RESTART:
-              ESP.restart();
-              break;
-            case SYSTEM_COUNT:
-              currentPage = PAGE_MAIN_DASHBOARD;
-              break;
-          }
-          break;
-      }
-      renderPage();
-      delay(200);
-    }
+    renderPage();
+    delay(200);
   }
 
   delay(50);
