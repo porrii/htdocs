@@ -21,6 +21,29 @@ $stmt = $db->query("SELECT * FROM tools_products ORDER BY name");
 $products = $stmt->fetchAll();
 ?>
 
+<?php
+require_once '../config/config.php';
+
+// Check if admin is logged in
+if (!isAdminLoggedIn()) {
+    redirect('login.php');
+}
+
+require_once '../config/database.php';
+$message = '';
+if (isset($_SESSION['message'])) {
+    $message = $_SESSION['message'];
+    unset($_SESSION['message']);
+}
+
+// Get all products
+$database = new Database();
+$db = $database->getConnection();
+
+$stmt = $db->query("SELECT * FROM tools_products ORDER BY name");
+$products = $stmt->fetchAll();
+?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -53,28 +76,12 @@ $products = $stmt->fetchAll();
             }
         }
     </script>
-    
-    <style>
-        .sidebar-link {
-            transition: all 0.2s ease;
-        }
-        .sidebar-link:hover {
-            background: rgba(22, 78, 99, 0.1);
-            transform: translateX(4px);
-        }
-        .sidebar-link.active {
-            background: #164e63;
-            color: white;
-        }
-    </style>
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen flex">
-        <!-- Sidebar -->
-        <div class="w-64 bg-gray-900 text-white">
-            <div class="p-6">
-                <h2 class="text-xl font-bold">Panel Admin</h2>
-            </div>
+<body class="font-body bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Sidebar Desktop -->
+        <div class="w-64 bg-gray-900 text-white hidden md:block">
+            <div class="p-6"><h2 class="text-xl font-bold">Panel Admin</h2></div>
             <nav class="mt-6">
                 <a href="index.php" class="block px-6 py-3 hover:bg-gray-700">Dashboard</a>
                 <a href="appointments.php" class="block px-6 py-3 hover:bg-gray-700">Citas</a>
@@ -82,21 +89,60 @@ $products = $stmt->fetchAll();
                 <a href="videos.php" class="block px-6 py-3 hover:bg-gray-700">Videos</a>
                 <a href="products.php" class="block px-6 py-3 bg-gray-700">Productos</a>
                 <a href="schedule.php" class="block px-6 py-3 hover:bg-gray-700">Horarios</a>
+                <a href="reports.php" class="block px-6 py-3 hover:bg-gray-700">Informes</a>
                 <a href="settings.php" class="block px-6 py-3 hover:bg-gray-700">Configuración</a>
                 <a href="logout.php" class="block px-6 py-3 hover:bg-gray-700">Cerrar Sesión</a>
             </nav>
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 p-8">
-            <div class="max-w-6xl mx-auto">
-                <div class="flex justify-between items-center mb-8">
-                    <h1 class="text-3xl font-bold text-gray-900">Gestión de Productos</h1>
-                    <button onclick="openAddModal()" class="bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700">
+        <div class="flex-1 flex flex-col overflow-auto">
+            <!-- Mobile Header -->
+            <div class="md:hidden p-4 bg-gray-900 text-white flex justify-between items-center">
+                <h2 class="text-lg font-bold">Panel Admin</h2>
+                <button id="mobile-menu-btn">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden bg-gray-900 text-white">
+                <nav class="px-4 py-2 space-y-2">
+                    <a href="index.php" class="block px-4 py-2 rounded hover:bg-gray-700">Dashboard</a>
+                    <a href="appointments.php" class="block px-4 py-2 rounded hover:bg-gray-700">Citas</a>
+                    <a href="services.php" class="block px-4 py-2 rounded hover:bg-gray-700">Servicios</a>
+                    <a href="videos.php" class="block px-4 py-2 rounded hover:bg-gray-700">Videos</a>
+                    <a href="products.php" class="block px-4 py-2 rounded bg-gray-700">Productos</a>
+                    <a href="schedule.php" class="block px-4 py-2 rounded hover:bg-gray-700">Horarios</a>
+                    <a href="reports.php" class="block px-4 py-2 rounded hover:bg-gray-700">Informes</a>
+                    <a href="settings.php" class="block px-4 py-2 rounded hover:bg-gray-700">Configuración</a>
+                    <a href="logout.php" class="block px-4 py-2 rounded hover:bg-gray-700">Cerrar Sesión</a>
+                </nav>
+            </div>
+
+            <script>
+                const btn = document.getElementById('mobile-menu-btn');
+                const menu = document.getElementById('mobile-menu');
+                btn.addEventListener('click', () => menu.classList.toggle('hidden'));
+            </script>
+
+            <!-- Header -->
+            <header class="bg-white shadow-sm border-b px-4 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-primary">Gestión de Productos</h1>
+                    <p class="text-muted">Administra todos los productos de la barbería</p>
+                </div>
+                <div>
+                    <button onclick="openAddModal()" class="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 text-sm sm:text-base">
                         Agregar Producto
                     </button>
                 </div>
+            </header>
 
+            <!-- Content -->
+            <main class="p-4 sm:p-8">
                 <?php if ($message): ?>
                     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
                         <?php echo htmlspecialchars($message); ?>
@@ -104,10 +150,10 @@ $products = $stmt->fetchAll();
                 <?php endif; ?>
 
                 <!-- Products Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <?php foreach ($products as $product): ?>
-                        <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                            <div class="aspect-square bg-gray-200 relative">
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+                            <div class="aspect-square bg-gray-200 relative flex-shrink-0">
                                 <?php if ($product['image_url']): ?>
                                     <img src="<?php echo htmlspecialchars($product['image_url']); ?>" 
                                          alt="<?php echo htmlspecialchars($product['name']); ?>"
@@ -120,21 +166,22 @@ $products = $stmt->fetchAll();
                                     </div>
                                 <?php endif; ?>
                             </div>
-                            <div class="p-4">
-                                <h3 class="font-semibold text-lg mb-2"><?php echo htmlspecialchars($product['name']); ?></h3>
-                                <p class="text-gray-600 text-sm mb-2"><?php echo htmlspecialchars($product['description']); ?></p>
-                                <!-- <p class="text-amber-600 font-semibold mb-4">€<?php echo number_format($product['price'], 2); ?></p> -->
-                                <div class="flex justify-between items-center">
+                            <div class="p-4 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <h3 class="font-semibold text-lg mb-2"><?php echo htmlspecialchars($product['name']); ?></h3>
+                                    <p class="text-gray-600 text-sm mb-2"><?php echo htmlspecialchars($product['description']); ?></p>
+                                </div>
+                                <div class="flex justify-between items-center mt-2">
                                     <span class="text-xs text-gray-500 capitalize">
                                         <?php echo htmlspecialchars($product['type']); ?>
                                     </span>
                                     <div class="flex gap-2">
                                         <button onclick="editProduct(<?php echo $product['id']; ?>)" 
-                                                class="text-blue-600 hover:text-blue-800">
+                                                class="text-blue-600 hover:text-blue-800 text-sm">
                                             Editar
                                         </button>
                                         <button onclick="deleteProduct(<?php echo $product['id']; ?>)" 
-                                                class="text-red-600 hover:text-red-800">
+                                                class="text-red-600 hover:text-red-800 text-sm">
                                             Eliminar
                                         </button>
                                     </div>
@@ -143,7 +190,7 @@ $products = $stmt->fetchAll();
                         </div>
                     <?php endforeach; ?>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
 
@@ -166,12 +213,6 @@ $products = $stmt->fetchAll();
                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
                 </div>
                 
-                <!-- <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Precio (€)</label>
-                    <input type="number" id="productPrice" name="price" step="0.01" min="0" required 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500">
-                </div> -->
-                
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Categoría</label>
                     <select id="productCategory" name="category" required 
@@ -188,7 +229,7 @@ $products = $stmt->fetchAll();
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
                 
-                <div class="flex justify-end gap-3">
+                <div class="flex justify-end gap-3 flex-wrap">
                     <button type="button" onclick="closeModal()" 
                             class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">
                         Cancelar
@@ -219,7 +260,6 @@ $products = $stmt->fetchAll();
                     document.getElementById('productId').value = product.id;
                     document.getElementById('productName').value = product.name;
                     document.getElementById('productDescription').value = product.description;
-                    /* document.getElementById('productPrice').value = product.price; */
                     document.getElementById('productCategory').value = product.type;
                     document.getElementById('productImage').value = product.image_url || '';
                     document.getElementById('productModal').classList.remove('hidden');
@@ -231,18 +271,13 @@ $products = $stmt->fetchAll();
             if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
                 fetch('api/delete_product.php', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: id })
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error al eliminar el producto');
-                    }
+                    if (data.success) location.reload();
+                    else alert('Error al eliminar el producto');
                 });
             }
         }
@@ -252,7 +287,6 @@ $products = $stmt->fetchAll();
             document.getElementById('productModal').classList.remove('flex');
         }
 
-        // Close modal when clicking outside
         document.getElementById('productModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });

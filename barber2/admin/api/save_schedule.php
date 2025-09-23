@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->beginTransaction();
         
         // Process each day of the week
-        for ($day = 1; $day <= 7; $day++) {
+        for ($day = 0; $day <= 6; $day++) {
             $isWorking = isset($_POST['working'][$day]) ? 1 : 0;
             $morningStart = $_POST['morning_start'][$day] ?? null;
             $morningEnd = $_POST['morning_end'][$day] ?? null;

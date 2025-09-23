@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadProducts()
   loadVideos()
   loadSchedule()
+  loadFooterSchedule()
 })
 
 // Load services from database
@@ -102,6 +103,55 @@ async function loadSchedule() {
   }
 }
 
+function formatTime(time) {
+  if (!time) return ""
+  return time.slice(0, 5) // muestra solo HH:MM
+}
+
+function createScheduleDay(dayName, dayData) {
+  const dayElement = document.createElement("div")
+  dayElement.className = "flex justify-between items-center py-2 border-b border-white/20"
+
+  let schedule = "Cerrado"
+  if (dayData.is_working_day) {
+    schedule = ""
+    if (dayData.morning_start && dayData.morning_end) {
+      schedule += `${formatTime(dayData.morning_start)} - ${formatTime(dayData.morning_end)}`
+    }
+    if (dayData.afternoon_start && dayData.afternoon_end) {
+      if (schedule) schedule += " | "
+      schedule += `${formatTime(dayData.afternoon_start)} - ${formatTime(dayData.afternoon_end)}`
+    }
+  }
+
+  dayElement.innerHTML = `
+        <span class="font-medium">${dayName}</span>
+        <span class="opacity-90">${schedule}</span>
+    `
+
+  return dayElement
+}
+
+// Load footer schedule from database
+async function loadFooterSchedule() {
+    try {
+        const response = await fetch("api/get_schedule.php");
+        const schedule = await response.json();
+
+        const footerSchedule = document.getElementById("footer-schedule");
+        footerSchedule.innerHTML = "";
+
+        const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+        schedule.forEach((day) => {
+            const dayElement = createFooterScheduleDay(days[day.day_of_week], day);
+            footerSchedule.appendChild(dayElement);
+        });
+    } catch (error) {
+        console.error("Error loading footer schedule:", error);
+    }
+}
+
 // Create service card element
 function createServiceCard(service) {
   const card = document.createElement("div")
@@ -153,54 +203,50 @@ function createProductCard(product) {
 
 // Create video card element
 function createVideoCard(video) {
-  const card = document.createElement("div")
-  card.className = "bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
+  const card = document.createElement("div");
+  card.className = "bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow";
+
+  const thumbnail = getYouTubeThumbnail(video.video_url, video.thumbnail_url);
 
   card.innerHTML = `
-        <div class="aspect-video bg-gray-200 relative cursor-pointer" onclick="playVideo('${video.video_url}')">
-            <img src="${video.thumbnail_url || "public/barbershop-video-thumbnail.jpg"}" 
-                 alt="${video.title}" 
-                 class="w-full h-full object-cover">
-            <div class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors">
-                <div class="bg-white/90 rounded-full p-3">
-                    <svg class="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                    </svg>
-                </div>
-            </div>
+    <div class="aspect-video bg-gray-200 relative cursor-pointer" onclick="playVideo('${video.video_url}')">
+      <img src="${thumbnail}" 
+           alt="${video.title}" 
+           class="w-full h-full object-cover">
+      <div class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors">
+        <div class="bg-white/90 rounded-full p-3">
+          <svg class="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
         </div>
-        <div class="p-4">
-            <h3 class="font-semibold text-primary mb-2">${video.title}</h3>
-            <p class="text-sm text-muted">${video.description}</p>
-        </div>
-    `
+      </div>
+    </div>
+    <div class="p-4">
+      <h3 class="font-semibold text-primary mb-2">${video.title}</h3>
+      <p class="text-sm text-muted">${video.description}</p>
+    </div>
+  `;
 
-  return card
+  return card;
 }
 
-// Create schedule day element
-function createScheduleDay(dayName, dayData) {
-  const dayElement = document.createElement("div")
-  dayElement.className = "flex justify-between items-center py-2 border-b border-white/20"
-
-  let schedule = "Cerrado"
-  if (dayData.is_working_day) {
-    schedule = ""
-    if (dayData.morning_start && dayData.morning_end) {
-      schedule += `${dayData.morning_start} - ${dayData.morning_end}`
+// Create schedule footer card element
+function createFooterScheduleDay(dayName, dayData) {
+    let schedule = "Cerrado";
+    if (dayData.is_working_day) {
+        schedule = "";
+        if (dayData.morning_start && dayData.morning_end) {
+            schedule += `${formatTime(dayData.morning_start)} - ${formatTime(dayData.morning_end)}`;
+        }
+        if (dayData.afternoon_start && dayData.afternoon_end) {
+            if (schedule) schedule += " | ";
+            schedule += `${formatTime(dayData.afternoon_start)} - ${formatTime(dayData.afternoon_end)}`;
+        }
     }
-    if (dayData.afternoon_start && dayData.afternoon_end) {
-      if (schedule) schedule += " | "
-      schedule += `${dayData.afternoon_start} - ${dayData.afternoon_end}`
-    }
-  }
 
-  dayElement.innerHTML = `
-        <span class="font-medium">${dayName}</span>
-        <span class="opacity-90">${schedule}</span>
-    `
-
-  return dayElement
+    const dayElement = document.createElement("p");
+    dayElement.textContent = `${dayName}: ${schedule}`;
+    return dayElement;
 }
 
 // Book service function
@@ -208,38 +254,51 @@ function bookService(serviceId) {
   window.location.href = `booking.php?service=${serviceId}`
 }
 
+// Conseguir embed para video
+function getYouTubeEmbedUrl(url) {
+  // Extrae el ID del video de YouTube
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]+)/);
+  return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1` : null;
+}
+
+// Conseguir thumbnail si no se proporciona
+function getYouTubeThumbnail(url, customThumbnail) {
+  if (customThumbnail) return customThumbnail; // si hay thumbnail subida, se usa
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]+)/);
+  return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : 'public/barbershop-video-thumbnail.jpg';
+}
+
 // Play video function
 function playVideo(videoUrl) {
-  // Create modal for video playback
-  const modal = document.createElement("div")
-  modal.className = "fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      document.body.removeChild(modal)
-    }
-  }
+  const embedUrl = getYouTubeEmbedUrl(videoUrl);
+  if (!embedUrl) return alert("URL de YouTube no válida");
 
-  const videoContainer = document.createElement("div")
-  videoContainer.className = "relative max-w-4xl w-full"
+  const modal = document.createElement("div");
+  modal.className = "fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4";
+  modal.onclick = (e) => { if (e.target === modal) document.body.removeChild(modal); };
 
-  videoContainer.innerHTML = `
-        <button onclick="document.body.removeChild(this.closest('.fixed'))" 
-                class="absolute -top-10 right-0 text-white hover:text-gray-300">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
-        <div class="aspect-video">
-            <iframe src="${videoUrl}" 
-                    class="w-full h-full rounded-lg" 
-                    frameborder="0" 
-                    allowfullscreen>
-            </iframe>
-        </div>
-    `
+  const videoContainer = document.createElement("div");
+  videoContainer.className = "relative max-w-4xl w-full aspect-video";
 
-  modal.appendChild(videoContainer)
-  document.body.appendChild(modal)
+  const iframe = document.createElement("iframe");
+  iframe.src = embedUrl;
+  iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+  iframe.allowFullscreen = true;
+  iframe.className = "w-full h-full";
+
+  const closeButton = document.createElement("button");
+  closeButton.className = "absolute -top-10 right-0 text-white hover:text-gray-300";
+  closeButton.innerHTML = `
+    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+    </svg>
+  `;
+  closeButton.onclick = () => document.body.removeChild(modal);
+
+  videoContainer.appendChild(closeButton);
+  videoContainer.appendChild(iframe);
+  modal.appendChild(videoContainer);
+  document.body.appendChild(modal);
 }
 
 // Navbar scroll effect

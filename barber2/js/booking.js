@@ -8,6 +8,7 @@ const bookingData = {
 
 let currentStep = 1
 let availableSlots = []
+let currentDate = new Date(); // Mes mostrado en calendario
 
 // Initialize booking system
 document.addEventListener("DOMContentLoaded", () => {
@@ -122,91 +123,109 @@ function updateStepIndicators(activeStep) {
   }
 }
 
-// Generate calendar
-function generateCalendar() {
-  const calendar = document.getElementById("calendar")
-  const today = new Date()
-  const currentMonth = today.getMonth()
-  const currentYear = today.getFullYear()
-
-  // Generate next 30 days
-  const calendarHTML = generateCalendarDays(today, 30)
-  calendar.innerHTML = calendarHTML
-
-  // Add click handlers to available dates
-  calendar.querySelectorAll(".calendar-day:not(.unavailable)").forEach((day) => {
-    day.addEventListener("click", () => {
-      // Remove selection from all days
-      calendar.querySelectorAll(".calendar-day").forEach((d) => d.classList.remove("selected"))
-
-      // Select clicked day
-      day.classList.add("selected")
-
-      // Store selected date
-      bookingData.date = day.dataset.date
-
-      // Enable next button
-      document.getElementById("next-to-step3").disabled = false
-    })
-  })
+// Convierte getDay() a índice con lunes=0
+function getDayIndex(date) {
+  return date.getDay(); // 0=Dom ... 6=Sáb
 }
 
-// Generate calendar days HTML
-function generateCalendarDays(startDate, numDays) {
-  let html = '<div class="grid grid-cols-7 gap-2 mb-4">'
+function formatDateLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // Enero=0
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
-  // Day headers
-  const dayHeaders = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
-  dayHeaders.forEach((day) => {
-    html += `<div class="text-center text-sm font-medium text-muted py-2">${day}</div>`
-  })
-  html += "</div>"
+// Función que revisa si un día es laborable
+async function checkWorkingDay(dayOfWeek) {
+    try {
+        const response = await fetch("api/check_working_day.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ day_of_week: dayOfWeek }),
+        });
+        const result = await response.json();
+        return result.is_working_day;
+    } catch (error) {
+        console.error("Error checking working day:", error);
+        return false;
+    }
+}
 
-  html += '<div class="grid grid-cols-7 gap-2">'
+// Generate calendar corregido
+async function generateCalendar(monthDate = currentDate) {
+    const calendar = document.getElementById("calendar");
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
 
-  for (let i = 0; i < numDays; i++) {
-    const date = new Date(startDate)
-    date.setDate(startDate.getDate() + i)
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const numDays = lastDay.getDate();
 
-    const dayOfWeek = date.getDay()
-    const isToday = date.toDateString() === new Date().toDateString()
-    const isPast = date < new Date().setHours(0, 0, 0, 0)
+    const dayHeaders = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    let html = '<div class="flex justify-between mb-2">';
+    html += `<button id="prev-month-btn" class="px-3 py-1 border rounded hover:bg-gray-100">« Mes Anterior</button>`;
+    html += `<span class="font-medium text-primary">${monthDate.toLocaleDateString("es-ES",{month:"long",year:"numeric"})}</span>`;
+    html += `<button id="next-month-btn" class="px-3 py-1 border rounded hover:bg-gray-100">Mes Siguiente »</button>`;
+    html += '</div>';
 
-    const dateStr = date.toISOString().split("T")[0]
-    const dayNum = date.getDate()
+    html += '<div class="grid grid-cols-7 gap-2 mb-2">';
+    dayHeaders.forEach(d => html += `<div class="text-center text-sm font-medium text-muted py-2">${d}</div>`);
+    html += '</div><div class="grid grid-cols-7 gap-2">';
 
-    let classes =
-      "calendar-day w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer text-sm font-medium transition-colors"
+    const offset = getDayIndex(firstDay);
+    for (let i = 0; i < offset; i++) html += '<div></div>';
 
-    if (isPast || !checkWorkingDay(dayOfWeek)) {
-      classes += " unavailable"
-    } else {
-      classes += " hover:bg-primary hover:text-white"
-      if (isToday) {
-        classes += " border-2 border-primary"
-      }
+    // Creamos un array de promesas para cada día
+    const dayPromises = [];
+    for (let day = 1; day <= numDays; day++) {
+        const date = new Date(year, month, day);
+        const dayIndex = getDayIndex(date);
+        dayPromises.push(checkWorkingDay(dayIndex).then(isWorking => ({ date, isWorking })));
     }
 
-    html += `<div class="${classes}" data-date="${dateStr}">${dayNum}</div>`
-  }
+    // Esperamos todas las promesas
+    const daysInfo = await Promise.all(dayPromises);
 
-  html += "</div>"
-  return html
-}
+    // Ahora generamos el HTML con la info correcta
+    daysInfo.forEach(({ date, isWorking }) => {
+        const dateStr = formatDateLocal(date); // función que formatea YYYY-MM-DD local
+        const dayNum = date.getDate();
+        const isToday = date.toDateString() === new Date().toDateString();
+        const isPast = date < new Date().setHours(0, 0, 0, 0);
 
-// Check if day is working day
-function checkWorkingDay(dayOfWeek) {
-  return fetch("api/check_working_day.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ day_of_week: dayOfWeek }),
-  })
-    .then((response) => response.json())
-    .then((result) => result.is_working_day)
-    .catch((error) => {
-      console.error("Error checking working day:", error)
-      return false
-    })
+        let classes = "calendar-day w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer text-sm font-medium transition-colors";
+        if (isPast || !isWorking) {
+            classes += " unavailable";
+        } else {
+            classes += " hover:bg-primary hover:text-white";
+            if (isToday) classes += " border-2 border-primary";
+        }
+
+        html += `<div class="${classes}" data-date="${dateStr}">${dayNum}</div>`;
+    });
+
+    html += '</div>';
+    calendar.innerHTML = html;
+
+    // Click events
+    calendar.querySelectorAll(".calendar-day:not(.unavailable)").forEach(dayEl => {
+        dayEl.addEventListener("click", () => {
+            calendar.querySelectorAll(".calendar-day").forEach(d => d.classList.remove("selected"));
+            dayEl.classList.add("selected");
+            bookingData.date = dayEl.dataset.date;
+            document.getElementById("next-to-step3").disabled = false;
+            updateAppointmentSummary();
+        });
+    });
+
+    document.getElementById("prev-month-btn").addEventListener("click", () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        generateCalendar(currentDate);
+    });
+    document.getElementById("next-month-btn").addEventListener("click", () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        generateCalendar(currentDate);
+    });
 }
 
 // Load available time slots
@@ -380,13 +399,11 @@ async function confirmBooking() {
   const form = document.getElementById("booking-form")
   const formData = new FormData(form)
 
-  // Validate form
   if (!form.checkValidity()) {
     form.reportValidity()
     return
   }
 
-  // Prepare booking data
   const bookingPayload = {
     service_id: bookingData.service.id,
     appointment_date: bookingData.date,
@@ -398,7 +415,6 @@ async function confirmBooking() {
   }
 
   try {
-    // Disable button to prevent double submission
     const confirmBtn = document.getElementById("confirm-booking")
     confirmBtn.disabled = true
     confirmBtn.textContent = "Procesando..."
@@ -412,7 +428,6 @@ async function confirmBooking() {
     const result = await response.json()
 
     if (result.success) {
-      // Show success modal
       document.getElementById("success-modal").classList.remove("hidden")
     } else {
       alert("Error al crear la reserva: " + result.message)
@@ -422,7 +437,6 @@ async function confirmBooking() {
   } catch (error) {
     console.error("Error confirming booking:", error)
     alert("Error al procesar la reserva. Por favor, inténtalo de nuevo.")
-
     const confirmBtn = document.getElementById("confirm-booking")
     confirmBtn.disabled = false
     confirmBtn.textContent = "Confirmar Reserva"

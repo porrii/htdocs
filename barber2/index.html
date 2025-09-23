@@ -56,10 +56,13 @@
     <nav class="fixed w-full z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
+                
+                <!-- Logo -->
                 <div class="flex items-center">
                     <h1 class="text-2xl font-bold text-primary">FSA Studio</h1>
                 </div>
                 
+                <!-- Menú de escritorio -->
                 <div class="hidden md:block">
                     <div class="ml-10 flex items-baseline space-x-8">
                         <a href="#inicio" class="text-muted hover:text-primary transition-colors">Inicio</a>
@@ -70,23 +73,29 @@
                     </div>
                 </div>
                 
-                <div class="flex items-center space-x-4">
+                <!-- Botones de acción (escritorio) -->
+                <div class="hidden md:flex items-center space-x-4">
                     <a href="booking.php" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium">
                         Reservar Cita
                     </a>
                     <a href="cancel.php" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium">
                         Cancelar Cita
                     </a>
-                    <button id="mobile-menu-btn" class="md:hidden text-muted">
+                </div>
+
+                <!-- Botón menú móvil -->
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="text-muted">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
                 </div>
             </div>
         </div>
         
-        <!-- Mobile menu -->
+        <!-- Menú móvil -->
         <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-200">
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <a href="#inicio" class="block px-3 py-2 text-muted hover:text-primary">Inicio</a>
@@ -94,6 +103,16 @@
                 <a href="#productos" class="block px-3 py-2 text-muted hover:text-primary">Productos</a>
                 <a href="#videos" class="block px-3 py-2 text-muted hover:text-primary">Videos</a>
                 <a href="#contacto" class="block px-3 py-2 text-muted hover:text-primary">Contacto</a>
+                
+                <!-- Botones dentro del menú móvil -->
+                <div class="mt-4 space-y-2">
+                    <a href="booking.php" class="block w-full text-center bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium">
+                        Reservar Cita
+                    </a>
+                    <a href="cancel.php" class="block w-full text-center bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium">
+                        Cancelar Cita
+                    </a>
+                </div>
             </div>
         </div>
     </nav>
@@ -246,7 +265,7 @@
                         </div>
                         <div>
                             <h3 class="text-xl font-semibold text-primary mb-2">Email</h3>
-                            <p class="text-muted">info@barbershoppro.com</p>
+                            <p class="text-muted">fsastudio@gmail.com</p>
                         </div>
                     </div>
                 </div>
@@ -315,10 +334,8 @@
                 
                 <div>
                     <h4 class="text-lg font-semibold mb-4">Horarios</h4>
-                    <div class="text-gray-400 space-y-1 text-sm">
-                        <p>Lun - Vie: 9:00 - 20:00</p>
-                        <p>Sábado: 9:00 - 14:00</p>
-                        <p>Domingo: Cerrado</p>
+                    <div id="footer-schedule" class="text-gray-400 space-y-1 text-sm">
+                        <!-- Schedule will be loaded dynamically -->
                     </div>
                 </div>
             </div>

@@ -20,8 +20,19 @@ if (isset($_SESSION['message'])) {
 // Get all videos
 $stmt = $db->query("SELECT * FROM videos ORDER BY created_at DESC");
 $videos = $stmt->fetchAll();
-?>
 
+function getYouTubeThumbnail($video_url, $custom_thumbnail = null) {
+    if ($custom_thumbnail) return $custom_thumbnail;
+
+    // Extraer el ID del video
+    preg_match('/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]+)/', $video_url, $matches);
+    if (isset($matches[1])) {
+        return "https://img.youtube.com/vi/{$matches[1]}/hqdefault.jpg";
+    }
+    // fallback
+    return '../public/barbershop-video-thumbnail.jpg';
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -54,28 +65,12 @@ $videos = $stmt->fetchAll();
             }
         }
     </script>
-    
-    <style>
-        .sidebar-link {
-            transition: all 0.2s ease;
-        }
-        .sidebar-link:hover {
-            background: rgba(22, 78, 99, 0.1);
-            transform: translateX(4px);
-        }
-        .sidebar-link.active {
-            background: #164e63;
-            color: white;
-        }
-    </style>
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen flex">
-        <!-- Sidebar -->
-        <div class="w-64 bg-gray-900 text-white">
-            <div class="p-6">
-                <h2 class="text-xl font-bold">Panel Admin</h2>
-            </div>
+<body class="font-body bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Sidebar Desktop -->
+        <div class="w-64 bg-gray-900 text-white hidden md:block">
+            <div class="p-6"><h2 class="text-xl font-bold">Panel Admin</h2></div>
             <nav class="mt-6">
                 <a href="index.php" class="block px-6 py-3 hover:bg-gray-700">Dashboard</a>
                 <a href="appointments.php" class="block px-6 py-3 hover:bg-gray-700">Citas</a>
@@ -83,21 +78,55 @@ $videos = $stmt->fetchAll();
                 <a href="videos.php" class="block px-6 py-3 bg-gray-700">Videos</a>
                 <a href="products.php" class="block px-6 py-3 hover:bg-gray-700">Productos</a>
                 <a href="schedule.php" class="block px-6 py-3 hover:bg-gray-700">Horarios</a>
+                <a href="reports.php" class="block px-6 py-3 hover:bg-gray-700">Informes</a>
                 <a href="settings.php" class="block px-6 py-3 hover:bg-gray-700">Configuración</a>
                 <a href="logout.php" class="block px-6 py-3 hover:bg-gray-700">Cerrar Sesión</a>
             </nav>
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 p-8">
-            <div class="max-w-6xl mx-auto">
-                <div class="flex justify-between items-center mb-8">
-                    <h1 class="text-3xl font-bold text-gray-900">Gestión de Videos</h1>
-                    <button onclick="openAddModal()" class="bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700">
-                        Agregar Video
-                    </button>
-                </div>
+        <div class="flex-1 flex flex-col overflow-auto">
+            <!-- Mobile Header -->
+            <div class="md:hidden p-4 bg-gray-900 text-white flex justify-between items-center">
+                <h2 class="text-lg font-bold">Panel Admin</h2>
+                <button id="mobile-menu-btn">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
 
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden bg-gray-900 text-white">
+                <nav class="px-4 py-2 space-y-2">
+                    <a href="index.php" class="block px-4 py-2 rounded hover:bg-gray-700">Dashboard</a>
+                    <a href="appointments.php" class="block px-4 py-2 rounded hover:bg-gray-700">Citas</a>
+                    <a href="services.php" class="block px-4 py-2 rounded hover:bg-gray-700">Servicios</a>
+                    <a href="videos.php" class="block px-4 py-2 rounded bg-gray-700">Videos</a>
+                    <a href="products.php" class="block px-4 py-2 rounded hover:bg-gray-700">Productos</a>
+                    <a href="schedule.php" class="block px-4 py-2 rounded hover:bg-gray-700">Horarios</a>
+                    <a href="reports.php" class="block px-4 py-2 rounded hover:bg-gray-700">Informes</a>
+                    <a href="settings.php" class="block px-4 py-2 rounded hover:bg-gray-700">Configuración</a>
+                    <a href="logout.php" class="block px-4 py-2 rounded hover:bg-gray-700">Cerrar Sesión</a>
+                </nav>
+            </div>
+
+            <script>
+                const btn = document.getElementById('mobile-menu-btn');
+                const menu = document.getElementById('mobile-menu');
+                btn.addEventListener('click', () => menu.classList.toggle('hidden'));
+            </script>
+
+            <!-- Header -->
+            <header class="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-primary">Gestión de Videos</h1>
+                <button onclick="openAddModal()" class="bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700">
+                    Agregar Video
+                </button>
+            </header>
+
+            <!-- Content -->
+            <main class="p-6">
                 <?php if ($message): ?>
                     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
                         <?php echo htmlspecialchars($message); ?>
@@ -109,48 +138,29 @@ $videos = $stmt->fetchAll();
                     <?php foreach ($videos as $video): ?>
                         <div class="bg-white rounded-lg shadow-md overflow-hidden">
                             <div class="aspect-video bg-gray-200 relative">
-                                <?php if ($video['thumbnail_url']): ?>
-                                    <img src="<?php echo htmlspecialchars($video['thumbnail_url']); ?>" 
-                                         alt="<?php echo htmlspecialchars($video['title']); ?>"
-                                         class="w-full h-full object-cover">
-                                <?php else: ?>
-                                    <div class="w-full h-full flex items-center justify-center text-gray-500">
-                                        <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                                            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
-                                        </svg>
-                                    </div>
-                                <?php endif; ?>
+                                <img src="<?php echo htmlspecialchars(getYouTubeThumbnail($video['video_url'], $video['thumbnail_url'])); ?>" 
+                                    alt="<?php echo htmlspecialchars($video['title']); ?>"
+                                    class="w-full h-full object-cover">
                                 <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                                     <button onclick="playVideo('<?php echo htmlspecialchars($video['video_url']); ?>')" 
-                                            class="text-white text-4xl">
-                                        ▶
-                                    </button>
+                                            class="text-white text-4xl">▶</button>
                                 </div>
                             </div>
                             <div class="p-4">
                                 <h3 class="font-semibold text-lg mb-2"><?php echo htmlspecialchars($video['title']); ?></h3>
                                 <p class="text-gray-600 text-sm mb-4"><?php echo htmlspecialchars($video['description']); ?></p>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-xs text-gray-500">
-                                        <?php echo date('d/m/Y', strtotime($video['created_at'])); ?>
-                                    </span>
+                                    <span class="text-xs text-gray-500"><?php echo date('d/m/Y', strtotime($video['created_at'])); ?></span>
                                     <div class="flex gap-2">
-                                        <button onclick="editVideo(<?php echo $video['id']; ?>)" 
-                                                class="text-blue-600 hover:text-blue-800">
-                                            Editar
-                                        </button>
-                                        <button onclick="deleteVideo(<?php echo $video['id']; ?>)" 
-                                                class="text-red-600 hover:text-red-800">
-                                            Eliminar
-                                        </button>
+                                        <button onclick="editVideo(<?php echo $video['id']; ?>)" class="text-blue-600 hover:text-blue-800">Editar</button>
+                                        <button onclick="deleteVideo(<?php echo $video['id']; ?>)" class="text-red-600 hover:text-red-800">Eliminar</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
 
@@ -160,41 +170,25 @@ $videos = $stmt->fetchAll();
             <h2 id="modalTitle" class="text-xl font-bold mb-4">Agregar Video</h2>
             <form id="videoForm" action="api/save_video.php" method="POST">
                 <input type="hidden" id="videoId" name="id">
-                
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Título</label>
-                    <input type="text" id="videoTitle" name="title" required 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <input type="text" id="videoTitle" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500">
                 </div>
-                
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
-                    <textarea id="videoDescription" name="description" rows="3"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                    <textarea id="videoDescription" name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500"></textarea>
                 </div>
-                
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">URL del Video</label>
-                    <input type="url" id="videoUrl" name="video_url" required 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                           placeholder="https://youtube.com/watch?v=...">
+                    <input type="url" id="videoUrl" name="video_url" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500" placeholder="https://youtube.com/watch?v=...">
                 </div>
-                
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">URL de Miniatura (opcional)</label>
-                    <input type="url" id="thumbnailUrl" name="thumbnail_url" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <input type="url" id="thumbnailUrl" name="thumbnail_url" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500">
                 </div>
-                
                 <div class="flex justify-end gap-3">
-                    <button type="button" onclick="closeModal()" 
-                            class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">
-                        Cancelar
-                    </button>
-                    <button type="submit" 
-                            class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700">
-                        Guardar
-                    </button>
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700">Guardar</button>
                 </div>
             </form>
         </div>
@@ -216,9 +210,7 @@ $videos = $stmt->fetchAll();
             document.getElementById('videoModal').classList.remove('hidden');
             document.getElementById('videoModal').classList.add('flex');
         }
-
         function editVideo(id) {
-            // Fetch video data and populate form
             fetch(`api/get_video.php?id=${id}`)
                 .then(response => response.json())
                 .then(video => {
@@ -232,37 +224,25 @@ $videos = $stmt->fetchAll();
                     document.getElementById('videoModal').classList.add('flex');
                 });
         }
-
         function deleteVideo(id) {
             if (confirm('¿Estás seguro de que quieres eliminar este video?')) {
                 fetch('api/delete_video.php', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ id: id })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error al eliminar el video');
-                    }
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id })
+                }).then(r => r.json()).then(data => {
+                    if (data.success) location.reload();
+                    else alert('Error al eliminar el video');
                 });
             }
         }
-
         function closeModal() {
             document.getElementById('videoModal').classList.add('hidden');
             document.getElementById('videoModal').classList.remove('flex');
         }
-
         function playVideo(url) {
             const player = document.getElementById('videoPlayer');
             const modal = document.getElementById('playerModal');
-            
-            // Convert YouTube URL to embed format
             let embedUrl = url;
             if (url.includes('youtube.com/watch?v=')) {
                 const videoId = url.split('v=')[1].split('&')[0];
@@ -271,26 +251,17 @@ $videos = $stmt->fetchAll();
                 const videoId = url.split('youtu.be/')[1];
                 embedUrl = `https://www.youtube.com/embed/${videoId}`;
             }
-            
             player.innerHTML = `<iframe src="${embedUrl}" class="w-full h-full" frameborder="0" allowfullscreen></iframe>`;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
-
         function closePlayer() {
             document.getElementById('playerModal').classList.add('hidden');
             document.getElementById('playerModal').classList.remove('flex');
             document.getElementById('videoPlayer').innerHTML = '';
         }
-
-        // Close modals when clicking outside
-        document.getElementById('videoModal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
-        });
-
-        document.getElementById('playerModal').addEventListener('click', function(e) {
-            if (e.target === this) closePlayer();
-        });
+        document.getElementById('videoModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+        document.getElementById('playerModal').addEventListener('click', e => { if (e.target === e.currentTarget) closePlayer(); });
     </script>
 </body>
 </html>

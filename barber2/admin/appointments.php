@@ -14,14 +14,13 @@ $db = $database->getConnection();
 $message = '';
 $error = '';
 
-// Handle appointment actions
+// Handle appointment actions (same as before)
 if ($_POST) {
     $action = $_POST['action'] ?? '';
     $appointmentId = (int)($_POST['appointment_id'] ?? 0);
     
     if ($action === 'cancel' && $appointmentId) {
         try {
-            // Get appointment details before canceling
             $query = "SELECT a.*, s.name as service_name FROM appointments a 
                       JOIN services s ON a.service_id = s.id 
                       WHERE a.id = :id";
@@ -31,16 +30,12 @@ if ($_POST) {
             $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($appointment) {
-                // Update appointment status
                 $query = "UPDATE appointments SET status = 'cancelled' WHERE id = :id";
                 $stmt = $db->prepare($query);
                 $stmt->bindParam(':id', $appointmentId);
-                
                 if ($stmt->execute()) {
-                    // Send cancellation email
                     $emailService = new EmailService();
                     $emailService->sendCancellationEmail($appointment);
-                    
                     $message = 'Cita cancelada exitosamente';
                 } else {
                     $error = 'Error al cancelar la cita';
@@ -58,7 +53,6 @@ if ($_POST) {
             $stmt = $db->prepare($query);
             $stmt->bindParam(':status', $status);
             $stmt->bindParam(':id', $appointmentId);
-            
             if ($stmt->execute()) {
                 $message = 'Estado actualizado exitosamente';
             } else {
@@ -68,45 +62,56 @@ if ($_POST) {
     }
 }
 
-// Handle URL parameters for quick actions
-if (isset($_GET['cancel'])) {
-    $appointmentId = (int)$_GET['cancel'];
-    // Auto-submit cancel form
-    echo "<script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (confirm('¿Estás seguro de que quieres cancelar esta cita?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type='hidden' name='action' value='cancel'>
-                    <input type='hidden' name='appointment_id' value='$appointmentId'>
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        });
-    </script>";
-}
+// Handle GET filters
+$filter_date = $_GET['filter_date'] ?? '';
+$filter_client = $_GET['filter_client'] ?? '';
+$filter_status = $_GET['filter_status'] ?? '';
 
-// Get all appointments with pagination
+// Pagination
 $page = (int)($_GET['page'] ?? 1);
 $limit = 20;
 $offset = ($page - 1) * $limit;
 
+// Build query with filters
+$whereClauses = [];
+$params = [];
+
+if ($filter_date) {
+    $whereClauses[] = "a.appointment_date = :filter_date";
+    $params[':filter_date'] = $filter_date;
+}
+if ($filter_client) {
+    $whereClauses[] = "a.client_name LIKE :filter_client";
+    $params[':filter_client'] = "%$filter_client%";
+}
+if ($filter_status) {
+    $whereClauses[] = "a.status = :filter_status";
+    $params[':filter_status'] = $filter_status;
+}
+
+$whereSQL = $whereClauses ? "WHERE " . implode(' AND ', $whereClauses) : "";
+
 $query = "SELECT a.*, s.name as service_name 
           FROM appointments a 
           JOIN services s ON a.service_id = s.id 
-          ORDER BY a.appointment_date DESC, a.appointment_time DESC 
+          $whereSQL
+          ORDER BY a.appointment_date DESC, a.appointment_time DESC
           LIMIT :limit OFFSET :offset";
 $stmt = $db->prepare($query);
-$stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-$stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+foreach ($params as $key => $val) {
+    $stmt->bindValue($key, $val);
+}
+$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count for pagination
-$countQuery = "SELECT COUNT(*) as total FROM appointments";
+// Total count for pagination
+$countQuery = "SELECT COUNT(*) as total FROM appointments a $whereSQL";
 $countStmt = $db->prepare($countQuery);
+foreach ($params as $key => $val) {
+    $countStmt->bindValue($key, $val);
+}
 $countStmt->execute();
 $totalAppointments = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
 $totalPages = ceil($totalAppointments / $limit);
@@ -115,154 +120,164 @@ $totalPages = ceil($totalAppointments / $limit);
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Citas - FSA Studio Admin</title>
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'sans': ['Space Grotesk', 'system-ui', 'sans-serif'],
-                        'body': ['DM Sans', 'system-ui', 'sans-serif'],
-                    },
-                    colors: {
-                        primary: '#164e63',
-                        secondary: '#f59e0b',
-                        accent: '#f59e0b',
-                        muted: '#475569',
-                    }
-                }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión de Citas - FSA Studio Admin</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            fontFamily: {
+                'sans': ['Space Grotesk', 'system-ui', 'sans-serif'],
+                'body': ['DM Sans', 'system-ui', 'sans-serif'],
+            },
+            colors: {
+                primary: '#164e63',
+                secondary: '#f59e0b',
+                accent: '#f59e0b',
+                muted: '#475569',
             }
         }
-    </script>
-    
-    <style>
-        .sidebar-link {
-            transition: all 0.2s ease;
-        }
-        .sidebar-link:hover {
-            background: rgba(22, 78, 99, 0.1);
-            transform: translateX(4px);
-        }
-        .sidebar-link.active {
-            background: #164e63;
-            color: white;
-        }
-    </style>
+    }
+}
+</script>
+<style>
+.sidebar-link { transition: all 0.2s ease; }
+.sidebar-link:hover { background: rgba(22, 78, 99, 0.1); transform: translateX(4px); }
+.sidebar-link.active { background: #164e63; color: white; }
+</style>
 </head>
 <body class="font-body bg-gray-50">
+
     <div class="flex h-screen">
-        <!-- Sidebar -->
-        <div class="w-64 bg-white shadow-lg">
-            <div class="p-6 border-b">
-                <h1 class="text-xl font-bold text-primary">FSA Studio</h1>
-                <p class="text-sm text-muted">Panel de Administración</p>
-            </div>
-            
+        <!-- Sidebar Desktop -->
+        <div class="w-64 bg-gray-900 text-white hidden md:block">
+            <div class="p-6"><h2 class="text-xl font-bold">Panel Admin</h2></div>
             <nav class="mt-6">
-                <a href="index.php" class="sidebar-link flex items-center px-6 py-3 text-muted hover:text-primary">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z"></path>
-                    </svg>
-                    Dashboard
-                </a>
-                
-                <a href="appointments.php" class="sidebar-link active flex items-center px-6 py-3 text-primary">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v16a2 2 0 002 2z"></path>
-                    </svg>
-                    Citas
-                </a>
-                
-                <a href="services.php" class="sidebar-link flex items-center px-6 py-3 text-muted hover:text-primary">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                    </svg>
-                    Servicios
-                </a>
-                
-                <a href="products.php" class="sidebar-link flex items-center px-6 py-3 text-muted hover:text-primary">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                    </svg>
-                    Productos/Herramientas
-                </a>
-                
-                <a href="videos.php" class="sidebar-link flex items-center px-6 py-3 text-muted hover:text-primary">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                    </svg>
-                    Videos
-                </a>
-                
-                <a href="schedule.php" class="sidebar-link flex items-center px-6 py-3 text-muted hover:text-primary">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Horarios
-                </a>
-                
-                <a href="settings.php" class="sidebar-link flex items-center px-6 py-3 text-muted hover:text-primary">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    Configuración
-                </a>
+                <a href="index.php" class="block px-6 py-3 hover:bg-gray-700">Dashboard</a>
+                <a href="appointments.php" class="block px-6 py-3 bg-gray-700">Citas</a>
+                <a href="services.php" class="block px-6 py-3 hover:bg-gray-700">Servicios</a>
+                <a href="videos.php" class="block px-6 py-3 hover:bg-gray-700">Videos</a>
+                <a href="products.php" class="block px-6 py-3 hover:bg-gray-700">Productos</a>
+                <a href="schedule.php" class="block px-6 py-3 hover:bg-gray-700">Horarios</a>
+                <a href="reports.php" class="block px-6 py-3 hover:bg-gray-700">Informes</a>
+                <a href="settings.php" class="block px-6 py-3 hover:bg-gray-700">Configuración</a>
+                <a href="logout.php" class="block px-6 py-3 hover:bg-gray-700">Cerrar Sesión</a>
             </nav>
-            
-            <div class="absolute bottom-0 w-64 p-6 border-t">
-                <div class="flex items-center mb-4">
-                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                        <?php echo strtoupper(substr($_SESSION['admin_username'], 0, 1)); ?>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm font-medium text-primary"><?php echo $_SESSION['admin_username']; ?></p>
-                        <p class="text-xs text-muted">Administrador</p>
-                    </div>
-                </div>
-                <a href="logout.php" class="flex items-center text-red-600 hover:text-red-700 text-sm">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                    </svg>
-                    Cerrar Sesión
-                </a>
-            </div>
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 overflow-auto">
+        <div class="flex-1 flex flex-col overflow-auto">
+            <!-- Mobile Header -->
+            <div class="md:hidden p-4 bg-gray-900 text-white flex justify-between items-center">
+                <h2 class="text-lg font-bold">Panel Admin</h2>
+                <button id="mobile-menu-btn">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden bg-gray-900 text-white">
+                <nav class="px-4 py-2 space-y-2">
+                    <a href="index.php" class="block px-4 py-2 rounded hover:bg-gray-700">Dashboard</a>
+                    <a href="appointments.php" class="block px-4 py-2 rounded bg-gray-700">Citas</a>
+                    <a href="services.php" class="block px-4 py-2 rounded hover:bg-gray-700">Servicios</a>
+                    <a href="videos.php" class="block px-4 py-2 rounded hover:bg-gray-700">Videos</a>
+                    <a href="products.php" class="block px-4 py-2 rounded hover:bg-gray-700">Productos</a>
+                    <a href="schedule.php" class="block px-4 py-2 rounded hover:bg-gray-700">Horarios</a>
+                    <a href="reports.php" class="block px-4 py-2 rounded hover:bg-gray-700">Informes</a>
+                    <a href="settings.php" class="block px-4 py-2 rounded hover:bg-gray-700">Configuración</a>
+                    <a href="logout.php" class="block px-4 py-2 rounded hover:bg-gray-700">Cerrar Sesión</a>
+                </nav>
+            </div>
+
+            <script>
+                const btn = document.getElementById('mobile-menu-btn');
+                const menu = document.getElementById('mobile-menu');
+                btn.addEventListener('click', () => menu.classList.toggle('hidden'));
+            </script>
+
             <!-- Header -->
-            <header class="bg-white shadow-sm border-b px-6 py-4">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h1 class="text-2xl font-bold text-primary">Gestión de Citas</h1>
-                        <p class="text-muted">Administra todas las citas de la barbería</p>
-                    </div>
-                    <div class="text-sm text-muted">
-                        Total: <?php echo $totalAppointments; ?> citas
-                    </div>
+            <header class="bg-white shadow-sm border-b px-4 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-primary">Gestión de Citas</h1>
+                    <p class="text-muted">Administra todas las citas de la barbería</p>
+                </div>
+                <div class="text-sm text-muted">
+                    Total: <?php echo $totalAppointments; ?> citas
                 </div>
             </header>
 
-            <!-- Content -->
-            <main class="p-6">
+            <!-- Filters Panel -->
+            <div class="p-4 sm:p-6 bg-white rounded-xl shadow-sm mt-4 max-w-full sm:max-w-7xl mx-auto">
+                <!-- Toggle button móvil -->
+                <button id="toggleFilters" class="sm:hidden w-full text-left text-primary font-semibold mb-2 flex justify-between items-center">
+                    Filtros
+                    <svg class="w-5 h-5 transform transition-transform" id="toggleIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+
+                <!-- Formulario de filtros -->
+                <form id="filtersForm" method="GET" class="flex flex-col sm:flex-row gap-4 sm:items-end hidden sm:flex w-full">
+                    <!-- Fecha -->
+                    <div class="flex flex-col flex-1 min-w-[120px]">
+                        <label class="text-sm text-muted mb-1">Fecha</label>
+                        <input type="date" name="filter_date" value="<?php echo htmlspecialchars($filter_date ?? ''); ?>" class="px-3 py-2 border rounded-lg text-sm w-full">
+                    </div>
+
+                    <!-- Cliente -->
+                    <div class="flex flex-col flex-1 min-w-[150px]">
+                        <label class="text-sm text-muted mb-1">Cliente</label>
+                        <input type="text" name="filter_client" value="<?php echo htmlspecialchars($filter_client ?? ''); ?>" placeholder="Nombre del cliente" class="px-3 py-2 border rounded-lg text-sm w-full">
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="flex flex-col flex-1 min-w-[130px]">
+                        <label class="text-sm text-muted mb-1">Estado</label>
+                        <select name="filter_status" class="px-3 py-2 border rounded-lg text-sm w-full">
+                            <option value="">Todos</option>
+                            <option value="pending" <?php if(($filter_status ?? '')==='pending') echo 'selected'; ?>>Pendiente</option>
+                            <option value="confirmed" <?php if(($filter_status ?? '')==='confirmed') echo 'selected'; ?>>Confirmada</option>
+                            <option value="cancelled" <?php if(($filter_status ?? '')==='cancelled') echo 'selected'; ?>>Cancelada</option>
+                            <option value="completed" <?php if(($filter_status ?? '')==='completed') echo 'selected'; ?>>Completada</option>
+                        </select>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="flex gap-2 flex-wrap">
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 text-sm">Filtrar</button>
+                        <a href="appointments.php" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">Limpiar</a>
+                    </div>
+                </form>
+            </div>
+
+            <script>
+                const toggleBtn = document.getElementById('toggleFilters');
+                const filtersForm = document.getElementById('filtersForm');
+                const toggleIcon = document.getElementById('toggleIcon');
+
+                toggleBtn.addEventListener('click', () => {
+                    filtersForm.classList.toggle('hidden');
+                    toggleIcon.classList.toggle('rotate-180');
+                });
+            </script>
+
+            <!-- Messages -->
+            <main class="p-4 sm:p-6 flex-1">
                 <?php if($message): ?>
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">
                     <?php echo $message; ?>
                 </div>
                 <?php endif; ?>
-                
                 <?php if($error): ?>
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
                     <?php echo $error; ?>
@@ -270,8 +285,8 @@ $totalPages = ceil($totalAppointments / $limit);
                 <?php endif; ?>
 
                 <!-- Appointments Table -->
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <table class="w-full">
+                <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+                    <table class="w-full min-w-[600px]">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">Cliente</th>
@@ -294,15 +309,9 @@ $totalPages = ceil($totalAppointments / $limit);
                                         <?php endif; ?>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-muted">
-                                    <?php echo htmlspecialchars($appointment['service_name']); ?>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-muted">
-                                    <?php echo date('d/m/Y', strtotime($appointment['appointment_date'])); ?>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-muted">
-                                    <?php echo date('H:i', strtotime($appointment['appointment_time'])); ?>
-                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-muted"><?php echo htmlspecialchars($appointment['service_name']); ?></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-muted"><?php echo date('d/m/Y', strtotime($appointment['appointment_date'])); ?></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-muted"><?php echo date('H:i', strtotime($appointment['appointment_time'])); ?></td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <?php
                                     $statusColors = [
@@ -321,15 +330,13 @@ $totalPages = ceil($totalAppointments / $limit);
                                     <select onchange="updateStatus(<?php echo $appointment['id']; ?>, this.value)" 
                                             class="px-2 py-1 text-xs leading-5 font-semibold rounded-full border-0 <?php echo $statusColors[$appointment['status']]; ?>">
                                         <?php foreach($statusLabels as $value => $label): ?>
-                                        <option value="<?php echo $value; ?>" <?php echo $appointment['status'] === $value ? 'selected' : ''; ?>>
-                                            <?php echo $label; ?>
-                                        </option>
+                                        <option value="<?php echo $value; ?>" <?php echo $appointment['status'] === $value ? 'selected' : ''; ?>><?php echo $label; ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex flex-col sm:flex-row gap-2 sm:gap-3">
                                     <button onclick="cancelAppointment(<?php echo $appointment['id']; ?>)" 
-                                            class="text-red-600 hover:text-red-700 mr-3"
+                                            class="text-red-600 hover:text-red-700"
                                             <?php echo $appointment['status'] === 'cancelled' ? 'disabled' : ''; ?>>
                                         Cancelar
                                     </button>
@@ -342,12 +349,9 @@ $totalPages = ceil($totalAppointments / $limit);
                                 </td>
                             </tr>
                             <?php endforeach; ?>
-                            
                             <?php if(empty($appointments)): ?>
                             <tr>
-                                <td colspan="6" class="px-6 py-4 text-center text-muted">
-                                    No hay citas registradas
-                                </td>
+                                <td colspan="6" class="px-6 py-4 text-center text-muted">No hay citas registradas</td>
                             </tr>
                             <?php endif; ?>
                         </tbody>
@@ -356,15 +360,13 @@ $totalPages = ceil($totalAppointments / $limit);
 
                 <!-- Pagination -->
                 <?php if($totalPages > 1): ?>
-                <div class="flex justify-center mt-6">
-                    <nav class="flex space-x-2">
-                        <?php for($i = 1; $i <= $totalPages; $i++): ?>
-                        <a href="?page=<?php echo $i; ?>" 
-                           class="px-3 py-2 rounded-lg <?php echo $i === $page ? 'bg-primary text-white' : 'bg-white text-muted hover:bg-gray-50'; ?>">
-                            <?php echo $i; ?>
-                        </a>
-                        <?php endfor; ?>
-                    </nav>
+                <div class="flex justify-center mt-6 flex-wrap gap-2">
+                    <?php for($i = 1; $i <= $totalPages; $i++): ?>
+                    <a href="?page=<?php echo $i; ?>&filter_date=<?php echo urlencode($filter_date); ?>&filter_client=<?php echo urlencode($filter_client); ?>&filter_status=<?php echo urlencode($filter_status); ?>" 
+                    class="px-3 py-2 rounded-lg <?php echo $i === $page ? 'bg-primary text-white' : 'bg-white text-muted hover:bg-gray-50'; ?>">
+                        <?php echo $i; ?>
+                    </a>
+                    <?php endfor; ?>
                 </div>
                 <?php endif; ?>
             </main>
@@ -376,9 +378,7 @@ $totalPages = ceil($totalAppointments / $limit);
         <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
             <h3 class="text-2xl font-bold text-primary mb-4">Notas de la Cita</h3>
             <div id="notesContent" class="text-muted mb-6"></div>
-            <button onclick="hideNotesModal()" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">
-                Cerrar
-            </button>
+            <button onclick="hideNotesModal()" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90">Cerrar</button>
         </div>
     </div>
 
@@ -386,23 +386,19 @@ $totalPages = ceil($totalAppointments / $limit);
         function updateStatus(appointmentId, status) {
             const form = document.createElement('form');
             form.method = 'POST';
-            form.innerHTML = `
-                <input type="hidden" name="action" value="update_status">
-                <input type="hidden" name="appointment_id" value="${appointmentId}">
-                <input type="hidden" name="status" value="${status}">
-            `;
+            form.innerHTML = `<input type="hidden" name="action" value="update_status">
+                            <input type="hidden" name="appointment_id" value="${appointmentId}">
+                            <input type="hidden" name="status" value="${status}">`;
             document.body.appendChild(form);
             form.submit();
         }
 
         function cancelAppointment(appointmentId) {
-            if (confirm('¿Estás seguro de que quieres cancelar esta cita? Se enviará un email de cancelación al cliente.')) {
+            if(confirm('¿Estás seguro de que quieres cancelar esta cita? Se enviará un email de cancelación al cliente.')) {
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="cancel">
-                    <input type="hidden" name="appointment_id" value="${appointmentId}">
-                `;
+                form.innerHTML = `<input type="hidden" name="action" value="cancel">
+                                <input type="hidden" name="appointment_id" value="${appointmentId}">`;
                 document.body.appendChild(form);
                 form.submit();
             }
