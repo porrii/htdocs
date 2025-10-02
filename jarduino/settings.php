@@ -1,116 +1,116 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'includes/auth.php';
+    session_start();
+    require_once 'config/database.php';
+    require_once 'includes/auth.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: login.php");
+        exit();
+    }
 
-$user_id = $_SESSION['user_id'];
-$user_email = $_SESSION['email'];
+    $user_id = $_SESSION['user_id'];
+    $user_email = $_SESSION['email'];
 
-// Obtener información del usuario
-$stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Obtener información del usuario
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Procesar actualización de perfil
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
-    $name = $_POST['name'];
-    $email = $_POST['email'];
-    $current_password = $_POST['current_password'];
-    $new_password = $_POST['new_password'];
-    $confirm_password = $_POST['confirm_password'];
-    
-    $error = '';
-    $success = '';
-    
-    // Validar campos obligatorios
-    if (empty($name) || empty($email)) {
-        $error = "Nombre y email son obligatorios";
-    } else {
-        // Verificar si el email ya existe (excepto para el usuario actual)
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
-        $stmt->execute([$email, $user_id]);
+    // Procesar actualización de perfil
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+        $name = $_POST['name'];
+        $email = $_POST['email'];
+        $current_password = $_POST['current_password'];
+        $new_password = $_POST['new_password'];
+        $confirm_password = $_POST['confirm_password'];
         
-        if ($stmt->fetch()) {
-            $error = "El email ya está en uso por otro usuario";
+        $error = '';
+        $success = '';
+        
+        // Validar campos obligatorios
+        if (empty($name) || empty($email)) {
+            $error = "Nombre y email son obligatorios";
         } else {
-            // Actualizar información básica
-            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ? WHERE id = ?");
-            if ($stmt->execute([$name, $email, $user_id])) {
-                $_SESSION['username'] = $name;
-                $_SESSION['email'] = $email;
-                $success = "Perfil actualizado correctamente";
-            } else {
-                $error = "Error al actualizar el perfil";
-            }
+            // Verificar si el email ya existe (excepto para el usuario actual)
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+            $stmt->execute([$email, $user_id]);
             
-            // Actualizar contraseña si se proporcionó
-            if (!empty($current_password) && !empty($new_password)) {
-                if ($new_password !== $confirm_password) {
-                    $error = "Las nuevas contraseñas no coinciden";
-                } elseif (!password_verify($current_password, $user['password'])) {
-                    $error = "La contraseña actual es incorrecta";
+            if ($stmt->fetch()) {
+                $error = "El email ya está en uso por otro usuario";
+            } else {
+                // Actualizar información básica
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ? WHERE id = ?");
+                if ($stmt->execute([$name, $email, $user_id])) {
+                    $_SESSION['username'] = $name;
+                    $_SESSION['email'] = $email;
+                    $success = "Perfil actualizado correctamente";
                 } else {
-                    $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
-                    if ($stmt->execute([$hashed_password, $user_id])) {
-                        $success = "Perfil y contraseña actualizados correctamente";
+                    $error = "Error al actualizar el perfil";
+                }
+                
+                // Actualizar contraseña si se proporcionó
+                if (!empty($current_password) && !empty($new_password)) {
+                    if ($new_password !== $confirm_password) {
+                        $error = "Las nuevas contraseñas no coinciden";
+                    } elseif (!password_verify($current_password, $user['password'])) {
+                        $error = "La contraseña actual es incorrecta";
                     } else {
-                        $error = "Error al actualizar la contraseña";
+                        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+                        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+                        if ($stmt->execute([$hashed_password, $user_id])) {
+                            $success = "Perfil y contraseña actualizados correctamente";
+                        } else {
+                            $error = "Error al actualizar la contraseña";
+                        }
                     }
                 }
             }
         }
     }
-}
 
-// Procesar preferencias del sistema
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_preferences'])) {
-    $language = $_POST['language'];
-    $timezone = $_POST['timezone'];
-    $notifications = isset($_POST['notifications']) ? 1 : 0;
-    $dark_mode = isset($_POST['dark_mode']) ? 1 : 0;
-    
-    // Guardar preferencias en la base de datos
-    $stmt = $pdo->prepare("
-        INSERT INTO user_preferences (user_id, language, timezone, notifications, dark_mode) 
-        VALUES (?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE 
-        language = VALUES(language), 
-        timezone = VALUES(timezone), 
-        notifications = VALUES(notifications), 
-        dark_mode = VALUES(dark_mode)
-    ");
-    
-    if ($stmt->execute([$user_id, $language, $timezone, $notifications, $dark_mode])) {
-        $success = "Preferencias guardadas correctamente";
+    // Procesar preferencias del sistema
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_preferences'])) {
+        $language = $_POST['language'];
+        $timezone = $_POST['timezone'];
+        $notifications = isset($_POST['notifications']) ? 1 : 0;
+        $dark_mode = isset($_POST['dark_mode']) ? 1 : 0;
         
-        // Actualizar modo oscuro en la sesión
-        $_SESSION['dark_mode'] = $dark_mode;
-    } else {
-        $error = "Error al guardar las preferencias";
+        // Guardar preferencias en la base de datos
+        $stmt = $pdo->prepare("
+            INSERT INTO user_preferences (user_id, language, timezone, notifications, dark_mode) 
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+            language = VALUES(language), 
+            timezone = VALUES(timezone), 
+            notifications = VALUES(notifications), 
+            dark_mode = VALUES(dark_mode)
+        ");
+        
+        if ($stmt->execute([$user_id, $language, $timezone, $notifications, $dark_mode])) {
+            $success = "Preferencias guardadas correctamente";
+            
+            // Actualizar modo oscuro en la sesión
+            $_SESSION['dark_mode'] = $dark_mode;
+        } else {
+            $error = "Error al guardar las preferencias";
+        }
     }
-}
 
-// Obtener preferencias del usuario
-$preferences = [
-    'language' => 'es',
-    'timezone' => 'Europe/Madrid',
-    'notifications' => 1,
-    'dark_mode' => 0
-];
+    // Obtener preferencias del usuario
+    $preferences = [
+        'language' => 'es',
+        'timezone' => 'Europe/Madrid',
+        'notifications' => 1,
+        'dark_mode' => 0
+    ];
 
-$stmt = $pdo->prepare("SELECT * FROM user_preferences WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$user_preferences = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt = $pdo->prepare("SELECT * FROM user_preferences WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $user_preferences = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($user_preferences) {
-    $preferences = array_merge($preferences, $user_preferences);
-}
+    if ($user_preferences) {
+        $preferences = array_merge($preferences, $user_preferences);
+    }
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -118,17 +118,13 @@ if ($user_preferences) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuración - SmartGarden</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
+
     <?php include 'includes/header.php'; ?>
     
     <div class="container">
-        <div class="row">
-            <?php // include 'includes/sidebar.php'; ?>
-            
+        <div class="row">            
             <main class="px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Configuración</h1>
@@ -332,40 +328,40 @@ if ($user_preferences) {
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Validación para eliminar cuenta
-        const deleteConfirmation = document.getElementById('deleteConfirmation');
-        const confirmDelete = document.getElementById('confirmDelete');
-        
-        deleteConfirmation.addEventListener('input', function() {
-            confirmDelete.disabled = this.value !== 'ELIMINAR';
+        document.addEventListener('DOMContentLoaded', function() {
+            // Validación para eliminar cuenta
+            const deleteConfirmation = document.getElementById('deleteConfirmation');
+            const confirmDelete = document.getElementById('confirmDelete');
+            
+            deleteConfirmation.addEventListener('input', function() {
+                confirmDelete.disabled = this.value !== 'ELIMINAR';
+            });
+            
+            confirmDelete.addEventListener('click', function() {
+                if (confirm('¿Está absolutamente seguro? Esta acción no se puede deshacer.')) {
+                    fetch('../api/delete_account.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Cuenta eliminada correctamente. Será redirigido al inicio.');
+                            window.location.href = '../index.php';
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('Error de conexión: ' + error);
+                    });
+                }
+            });
         });
-        
-        confirmDelete.addEventListener('click', function() {
-            if (confirm('¿Está absolutamente seguro? Esta acción no se puede deshacer.')) {
-                fetch('../api/delete_account.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Cuenta eliminada correctamente. Será redirigido al inicio.');
-                        window.location.href = '../index.php';
-                    } else {
-                        alert('Error: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    alert('Error de conexión: ' + error);
-                });
-            }
-        });
-    });
     </script>
+    
 </body>
 </html>

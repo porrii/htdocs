@@ -1,109 +1,109 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'includes/auth.php';
+    session_start();
+    require_once 'config/database.php';
+    require_once 'includes/auth.php';
 
-// Verificar autenticación y permisos de administrador
-if (!isAuthenticated() || !hasRole('admin')) {
-    header("Location: index.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
-
-// Obtener estadísticas del sistema
-$stats = [];
-$stmt = $pdo->prepare("
-    SELECT 
-        (SELECT COUNT(*) FROM users) as total_users,
-        (SELECT COUNT(*) FROM devices) as total_devices,
-        (SELECT COUNT(*) FROM irrigation_log WHERE DATE(created_at) = CURDATE()) as today_irrigations,
-        (SELECT COUNT(*) FROM alerts WHERE resolved = 0) as pending_alerts
-");
-$stmt->execute();
-$stats = $stmt->fetch(PDO::FETCH_ASSOC);
-
-// Obtener usuarios
-$stmt = $pdo->prepare("SELECT user_id, username, email, role, created_at FROM users ORDER BY created_at DESC");
-$stmt->execute();
-$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Obtener dispositivos
-$stmt = $pdo->prepare("
-    SELECT d.*, u.username as owner 
-    FROM devices d 
-    JOIN users u ON d.user_id = u.user_id 
-    ORDER BY d.created_at DESC
-");
-$stmt->execute();
-$devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Procesar acciones de administración
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['update_user_role'])) {
-        $target_user_id = $_POST['user_id'];
-        $new_role = $_POST['role'];
-        
-        $stmt = $pdo->prepare("UPDATE users SET role = ? WHERE user_id = ?");
-        $stmt->execute([$new_role, $target_user_id]);
-        
-        header("Location: admin.php?message=role_updated");
+    // Verificar autenticación y permisos de administrador
+    if (!isAuthenticated() || !hasRole('admin')) {
+        header("Location: index.php");
         exit();
     }
-    
-    if (isset($_POST['delete_user'])) {
-        $target_user_id = $_POST['user_id'];
-        
-        // No permitir auto-eliminación
-        if ($target_user_id != $user_id) {
-            $stmt = $pdo->prepare("DELETE FROM users WHERE user_id = ?");
-            $stmt->execute([$target_user_id]);
+
+    $user_id = $_SESSION['user_id'];
+
+    // Obtener estadísticas del sistema
+    $stats = [];
+    $stmt = $pdo->prepare("
+        SELECT 
+            (SELECT COUNT(*) FROM users) as total_users,
+            (SELECT COUNT(*) FROM devices) as total_devices,
+            (SELECT COUNT(*) FROM irrigation_log WHERE DATE(created_at) = CURDATE()) as today_irrigations,
+            (SELECT COUNT(*) FROM alerts WHERE resolved = 0) as pending_alerts
+    ");
+    $stmt->execute();
+    $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Obtener usuarios
+    $stmt = $pdo->prepare("SELECT user_id, username, email, role, created_at FROM users ORDER BY created_at DESC");
+    $stmt->execute();
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Obtener dispositivos
+    $stmt = $pdo->prepare("
+        SELECT d.*, u.username as owner 
+        FROM devices d 
+        JOIN users u ON d.user_id = u.user_id 
+        ORDER BY d.created_at DESC
+    ");
+    $stmt->execute();
+    $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Procesar acciones de administración
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (isset($_POST['update_user_role'])) {
+            $target_user_id = $_POST['user_id'];
+            $new_role = $_POST['role'];
             
-            header("Location: admin.php?message=user_deleted");
+            $stmt = $pdo->prepare("UPDATE users SET role = ? WHERE user_id = ?");
+            $stmt->execute([$new_role, $target_user_id]);
+            
+            header("Location: admin.php?message=role_updated");
+            exit();
+        }
+        
+        if (isset($_POST['delete_user'])) {
+            $target_user_id = $_POST['user_id'];
+            
+            // No permitir auto-eliminación
+            if ($target_user_id != $user_id) {
+                $stmt = $pdo->prepare("DELETE FROM users WHERE user_id = ?");
+                $stmt->execute([$target_user_id]);
+                
+                header("Location: admin.php?message=user_deleted");
+                exit();
+            }
+        }
+        
+        if (isset($_POST['update_device_owner'])) {
+            $device_id = $_POST['device_id'];
+            $new_owner_id = $_POST['user_id'];
+            
+            $stmt = $pdo->prepare("UPDATE devices SET user_id = ? WHERE device_id = ?");
+            $stmt->execute([$new_owner_id, $device_id]);
+            
+            header("Location: admin.php?message=device_updated");
+            exit();
+        }
+        
+        if (isset($_POST['delete_device'])) {
+            $device_id = $_POST['device_id'];
+            
+            $stmt = $pdo->prepare("DELETE FROM devices WHERE device_id = ?");
+            $stmt->execute([$device_id]);
+            
+            header("Location: admin.php?message=device_deleted");
             exit();
         }
     }
-    
-    if (isset($_POST['update_device_owner'])) {
-        $device_id = $_POST['device_id'];
-        $new_owner_id = $_POST['user_id'];
-        
-        $stmt = $pdo->prepare("UPDATE devices SET user_id = ? WHERE device_id = ?");
-        $stmt->execute([$new_owner_id, $device_id]);
-        
-        header("Location: admin.php?message=device_updated");
-        exit();
-    }
-    
-    if (isset($_POST['delete_device'])) {
-        $device_id = $_POST['device_id'];
-        
-        $stmt = $pdo->prepare("DELETE FROM devices WHERE device_id = ?");
-        $stmt->execute([$device_id]);
-        
-        header("Location: admin.php?message=device_deleted");
-        exit();
-    }
-}
 
-// Mensajes de confirmación
-$message = '';
-if (isset($_GET['message'])) {
-    switch ($_GET['message']) {
-        case 'role_updated':
-            $message = 'Rol de usuario actualizado correctamente.';
-            break;
-        case 'user_deleted':
-            $message = 'Usuario eliminado correctamente.';
-            break;
-        case 'device_updated':
-            $message = 'Propietario del dispositivo actualizado correctamente.';
-            break;
-        case 'device_deleted':
-            $message = 'Dispositivo eliminado correctamente.';
-            break;
+    // Mensajes de confirmación
+    $message = '';
+    if (isset($_GET['message'])) {
+        switch ($_GET['message']) {
+            case 'role_updated':
+                $message = 'Rol de usuario actualizado correctamente.';
+                break;
+            case 'user_deleted':
+                $message = 'Usuario eliminado correctamente.';
+                break;
+            case 'device_updated':
+                $message = 'Propietario del dispositivo actualizado correctamente.';
+                break;
+            case 'device_deleted':
+                $message = 'Dispositivo eliminado correctamente.';
+                break;
+        }
     }
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -111,17 +111,13 @@ if (isset($_GET['message'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartGarden - Panel de Administración</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
+
     <?php include 'includes/header.php'; ?>
     
     <div class="container">
         <div class="row">
-            <?php // include 'includes/sidebar.php'; ?>
-            
             <main class="px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Panel de Administración</h1>
@@ -312,7 +308,5 @@ if (isset($_GET['message'])) {
             </main>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

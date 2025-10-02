@@ -1,104 +1,104 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'includes/auth.php';
+    session_start();
+    require_once 'config/database.php';
+    require_once 'includes/auth.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
-
-// Obtener dispositivos del usuario
-$stmt = $pdo->prepare("SELECT * FROM devices WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Filtros
-$device_filter = $_GET['device'] ?? '';
-$date_from = $_GET['date_from'] ?? date('Y-m-d', strtotime('-7 days'));
-$date_to = $_GET['date_to'] ?? date('Y-m-d');
-$type_filter = $_GET['type'] ?? 'all';
-
-// Obtener datos históricos
-$sensor_data = [];
-$irrigation_logs = [];
-
-if (!empty($devices)) {
-    $device_ids = array_column($devices, 'device_id');
-    
-    // Construir consulta para datos de sensores
-    if ($type_filter === 'all' || $type_filter === 'sensors') {
-        $sensor_where = "sd.device_id IN (" . implode(',', array_fill(0, count($device_ids), '?')) . ")";
-        $sensor_params = $device_ids;
-        
-        if (!empty($device_filter)) {
-            $sensor_where .= " AND sd.device_id = ?";
-            $sensor_params[] = $device_filter;
-        }
-        
-        if (!empty($date_from)) {
-            $sensor_where .= " AND DATE(sd.created_at) >= ?";
-            $sensor_params[] = $date_from;
-        }
-        
-        if (!empty($date_to)) {
-            $sensor_where .= " AND DATE(sd.created_at) <= ?";
-            $sensor_params[] = $date_to;
-        }
-        
-        $stmt = $pdo->prepare("
-            SELECT sd.*, d.name as device_name 
-            FROM sensor_data sd 
-            JOIN devices d ON sd.device_id = d.device_id 
-            WHERE $sensor_where 
-            ORDER BY sd.created_at DESC 
-            LIMIT 100
-        ");
-        $stmt->execute($sensor_params);
-        $sensor_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: login.php");
+        exit();
     }
-    
-    // Construir consulta para registros de riego
-    if ($type_filter === 'all' || $type_filter === 'irrigation') {
-        $irrigation_where = "il.device_id IN (" . implode(',', array_fill(0, count($device_ids), '?')) . ")";
-        $irrigation_params = $device_ids;
-        
-        if (!empty($device_filter)) {
-            $irrigation_where .= " AND il.device_id = ?";
-            $irrigation_params[] = $device_filter;
-        }
-        
-        if (!empty($date_from)) {
-            $irrigation_where .= " AND DATE(il.created_at) >= ?";
-            $irrigation_params[] = $date_from;
-        }
-        
-        if (!empty($date_to)) {
-            $irrigation_where .= " AND DATE(il.created_at) <= ?";
-            $irrigation_params[] = $date_to;
-        }
-        
-        $stmt = $pdo->prepare("
-            SELECT il.*, d.name as device_name 
-            FROM irrigation_log il 
-            JOIN devices d ON il.device_id = d.device_id 
-            WHERE $irrigation_where 
-            ORDER BY il.created_at DESC 
-            LIMIT 100
-        ");
-        $stmt->execute($irrigation_params);
-        $irrigation_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-}
 
-// Obtener estadísticas
-$stats = [
-    'total_readings' => count($sensor_data),
-    'total_irrigations' => count($irrigation_logs),
-    'total_water' => array_sum(array_column($irrigation_logs, 'duration'))
-];
+    $user_id = $_SESSION['user_id'];
+
+    // Obtener dispositivos del usuario
+    $stmt = $pdo->prepare("SELECT * FROM devices WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Filtros
+    $device_filter = $_GET['device'] ?? '';
+    $date_from = $_GET['date_from'] ?? date('Y-m-d', strtotime('-7 days'));
+    $date_to = $_GET['date_to'] ?? date('Y-m-d');
+    $type_filter = $_GET['type'] ?? 'all';
+
+    // Obtener datos históricos
+    $sensor_data = [];
+    $irrigation_logs = [];
+
+    if (!empty($devices)) {
+        $device_ids = array_column($devices, 'device_id');
+        
+        // Construir consulta para datos de sensores
+        if ($type_filter === 'all' || $type_filter === 'sensors') {
+            $sensor_where = "sd.device_id IN (" . implode(',', array_fill(0, count($device_ids), '?')) . ")";
+            $sensor_params = $device_ids;
+            
+            if (!empty($device_filter)) {
+                $sensor_where .= " AND sd.device_id = ?";
+                $sensor_params[] = $device_filter;
+            }
+            
+            if (!empty($date_from)) {
+                $sensor_where .= " AND DATE(sd.created_at) >= ?";
+                $sensor_params[] = $date_from;
+            }
+            
+            if (!empty($date_to)) {
+                $sensor_where .= " AND DATE(sd.created_at) <= ?";
+                $sensor_params[] = $date_to;
+            }
+            
+            $stmt = $pdo->prepare("
+                SELECT sd.*, d.name as device_name 
+                FROM sensor_data sd 
+                JOIN devices d ON sd.device_id = d.device_id 
+                WHERE $sensor_where 
+                ORDER BY sd.created_at DESC 
+                LIMIT 100
+            ");
+            $stmt->execute($sensor_params);
+            $sensor_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        
+        // Construir consulta para registros de riego
+        if ($type_filter === 'all' || $type_filter === 'irrigation') {
+            $irrigation_where = "il.device_id IN (" . implode(',', array_fill(0, count($device_ids), '?')) . ")";
+            $irrigation_params = $device_ids;
+            
+            if (!empty($device_filter)) {
+                $irrigation_where .= " AND il.device_id = ?";
+                $irrigation_params[] = $device_filter;
+            }
+            
+            if (!empty($date_from)) {
+                $irrigation_where .= " AND DATE(il.created_at) >= ?";
+                $irrigation_params[] = $date_from;
+            }
+            
+            if (!empty($date_to)) {
+                $irrigation_where .= " AND DATE(il.created_at) <= ?";
+                $irrigation_params[] = $date_to;
+            }
+            
+            $stmt = $pdo->prepare("
+                SELECT il.*, d.name as device_name 
+                FROM irrigation_log il 
+                JOIN devices d ON il.device_id = d.device_id 
+                WHERE $irrigation_where 
+                ORDER BY il.created_at DESC 
+                LIMIT 100
+            ");
+            $stmt->execute($irrigation_params);
+            $irrigation_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+    }
+
+    // Obtener estadísticas
+    $stats = [
+        'total_readings' => count($sensor_data),
+        'total_irrigations' => count($irrigation_logs),
+        'total_water' => array_sum(array_column($irrigation_logs, 'duration'))
+    ];
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -106,18 +106,12 @@ $stats = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historial - SmartGarden</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <?php include 'includes/header.php'; ?>
     
     <div class="container">
         <div class="row">
-            <?php // include 'includes/sidebar.php'; ?>
-            
             <main class="px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Historial</h1>
@@ -345,10 +339,9 @@ $stats = [
             </main>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <?php if (!empty($sensor_data)): ?>
+        
     <script>
         // Preparar datos para el gráfico
         const dates = [];
@@ -429,6 +422,7 @@ $stats = [
             }
         });
     </script>
+    
     <?php endif; ?>
 </body>
 </html>

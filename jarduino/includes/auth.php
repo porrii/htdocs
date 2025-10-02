@@ -48,7 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
 function verifyCredentials($email, $password) {
     global $pdo;
     
-    $stmt = $pdo->prepare("SELECT user_id, username, email, password, role FROM users WHERE username = ? OR email = ?");
+    $stmt = $pdo->prepare("SELECT u.*, up.* FROM users u INNER JOIN user_preferences up ON u.user_id = up.user_id WHERE u.username = ? OR u.email = ?");
     $stmt->execute([$email, $email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     

@@ -1,111 +1,111 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'includes/auth.php';
+    session_start();
+    require_once 'config/database.php';
+    require_once 'includes/auth.php';
 
-// Verificar si el usuario está logueado
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
-
-// Obtener estadísticas generales
-$stats = [];
-$stmt = $pdo->prepare("
-    SELECT 
-        COUNT(*) as total_devices,
-        SUM(CASE WHEN sd.online_status = 1 AND TIMESTAMPDIFF(SECOND, sd.created_at, NOW()) <= 30 THEN 1 ELSE 0 END) as online_devices,
-        (SELECT COUNT(*) FROM irrigation_log il JOIN devices d ON il.device_id = d.device_id WHERE d.user_id = ? AND DATE(il.created_at) = CURDATE()) as today_irrigations,
-        (SELECT SUM(duration) FROM irrigation_log il JOIN devices d ON il.device_id = d.device_id WHERE d.user_id = ? AND DATE(il.created_at) = CURDATE()) as today_water_usage
-    FROM devices d
-    LEFT JOIN sensor_data sd ON d.device_id = sd.device_id 
-        AND sd.created_at = (SELECT MAX(created_at) FROM sensor_data WHERE device_id = d.device_id)
-    WHERE d.user_id = ?
-");
-$stmt->execute([$user_id, $user_id, $user_id]);
-$stats = $stmt->fetch(PDO::FETCH_ASSOC);
-
-// Obtener alertas recientes
-$alerts = [];
-$stmt = $pdo->prepare("
-    SELECT a.*, d.name as device_name 
-    FROM alerts a 
-    JOIN devices d ON a.device_id = d.device_id 
-    WHERE d.user_id = ? 
-    ORDER BY a.created_at DESC 
-    LIMIT 5
-");
-$stmt->execute([$user_id]);
-$alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Obtener dispositivos del usuario
-$stmt = $pdo->prepare("SELECT * FROM devices WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Si se ha seleccionado un dispositivo
-$selected_device = null;
-$sensor_data = [];
-$irrigation_logs = [];
-$device_config = [];
-$irrigation_schedules = [];
-
-if (isset($_GET['device']) && !empty($_GET['device'])) {
-    $device_id = $_GET['device'];
-    
-    // Verificar que el dispositivo pertenece al usuario
-    $stmt = $pdo->prepare("SELECT * FROM devices WHERE device_id = ? AND user_id = ?");
-    $stmt->execute([$device_id, $user_id]);
-    $selected_device = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($selected_device) {
-        // Obtener configuración del dispositivo
-        $stmt = $pdo->prepare("SELECT * FROM device_config WHERE device_id = ?");
-        $stmt->execute([$device_id]);
-        $device_config = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Obtener programaciones de riego
-        $stmt = $pdo->prepare("SELECT * FROM irrigation_schedules WHERE device_id = ? ORDER BY created_at DESC");
-        $stmt->execute([$device_id]);
-        $irrigation_schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Obtener datos del sensor (últimas 24 horas)
-        $stmt = $pdo->prepare("
-            SELECT * FROM sensor_data 
-            WHERE device_id = ? AND created_at >= NOW() - INTERVAL 24 HOUR 
-            ORDER BY created_at DESC
-        ");
-        $stmt->execute([$device_id]);
-        $sensor_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Obtener registros de riego
-        $stmt = $pdo->prepare("
-            SELECT * FROM irrigation_log 
-            WHERE device_id = ? 
-            ORDER BY created_at DESC 
-            LIMIT 10
-        ");
-        $stmt->execute([$device_id]);
-        $irrigation_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Obtener configuración
-        $auto_irrigation = $device_config ? (bool)$device_config['auto_irrigation'] : false;
-        $soil_threshold = $device_config ? $device_config['threshold'] : 50;
-        $irrigation_duration = $device_config ? $device_config['duration'] : 10;
+    // Verificar si el usuario está logueado
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: login.php");
+        exit();
     }
-}
 
-// Marcar dispositivos offline automáticamente
-$offline_threshold = 30; // segundos
-$stmt = $pdo->prepare("
-    UPDATE sensor_data 
-    SET online_status = 0 
-    WHERE created_at < NOW() - INTERVAL ? SECOND 
-    AND online_status = 1
-");
-$stmt->execute([$offline_threshold]);
+    $user_id = $_SESSION['user_id'];
+
+    // Obtener estadísticas generales
+    $stats = [];
+    $stmt = $pdo->prepare("
+        SELECT 
+            COUNT(*) as total_devices,
+            SUM(CASE WHEN sd.online_status = 1 AND TIMESTAMPDIFF(SECOND, sd.created_at, NOW()) <= 30 THEN 1 ELSE 0 END) as online_devices,
+            (SELECT COUNT(*) FROM irrigation_log il JOIN devices d ON il.device_id = d.device_id WHERE d.user_id = ? AND DATE(il.created_at) = CURDATE()) as today_irrigations,
+            (SELECT SUM(duration) FROM irrigation_log il JOIN devices d ON il.device_id = d.device_id WHERE d.user_id = ? AND DATE(il.created_at) = CURDATE()) as today_water_usage
+        FROM devices d
+        LEFT JOIN sensor_data sd ON d.device_id = sd.device_id 
+            AND sd.created_at = (SELECT MAX(created_at) FROM sensor_data WHERE device_id = d.device_id)
+        WHERE d.user_id = ?
+    ");
+    $stmt->execute([$user_id, $user_id, $user_id]);
+    $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Obtener alertas recientes
+    $alerts = [];
+    $stmt = $pdo->prepare("
+        SELECT a.*, d.name as device_name 
+        FROM alerts a 
+        JOIN devices d ON a.device_id = d.device_id 
+        WHERE d.user_id = ? 
+        ORDER BY a.created_at DESC 
+        LIMIT 5
+    ");
+    $stmt->execute([$user_id]);
+    $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Obtener dispositivos del usuario
+    $stmt = $pdo->prepare("SELECT * FROM devices WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Si se ha seleccionado un dispositivo
+    $selected_device = null;
+    $sensor_data = [];
+    $irrigation_logs = [];
+    $device_config = [];
+    $irrigation_schedules = [];
+
+    if (isset($_GET['device']) && !empty($_GET['device'])) {
+        $device_id = $_GET['device'];
+        
+        // Verificar que el dispositivo pertenece al usuario
+        $stmt = $pdo->prepare("SELECT * FROM devices WHERE device_id = ? AND user_id = ?");
+        $stmt->execute([$device_id, $user_id]);
+        $selected_device = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($selected_device) {
+            // Obtener configuración del dispositivo
+            $stmt = $pdo->prepare("SELECT * FROM device_config WHERE device_id = ?");
+            $stmt->execute([$device_id]);
+            $device_config = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Obtener programaciones de riego
+            $stmt = $pdo->prepare("SELECT * FROM irrigation_schedules WHERE device_id = ? ORDER BY created_at DESC");
+            $stmt->execute([$device_id]);
+            $irrigation_schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Obtener datos del sensor (últimas 24 horas)
+            $stmt = $pdo->prepare("
+                SELECT * FROM sensor_data 
+                WHERE device_id = ? AND created_at >= NOW() - INTERVAL 24 HOUR 
+                ORDER BY created_at DESC
+            ");
+            $stmt->execute([$device_id]);
+            $sensor_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Obtener registros de riego
+            $stmt = $pdo->prepare("
+                SELECT * FROM irrigation_log 
+                WHERE device_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT 10
+            ");
+            $stmt->execute([$device_id]);
+            $irrigation_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Obtener configuración
+            $auto_irrigation = $device_config ? (bool)$device_config['auto_irrigation'] : false;
+            $soil_threshold = $device_config ? $device_config['threshold'] : 50;
+            $irrigation_duration = $device_config ? $device_config['duration'] : 10;
+        }
+    }
+
+    // Marcar dispositivos offline automáticamente
+    $offline_threshold = 30; // segundos
+    $stmt = $pdo->prepare("
+        UPDATE sensor_data 
+        SET online_status = 0 
+        WHERE created_at < NOW() - INTERVAL ? SECOND 
+        AND online_status = 1
+    ");
+    $stmt->execute([$offline_threshold]);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -113,10 +113,6 @@ $stmt->execute([$offline_threshold]);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartGarden Control Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="assets/css/style.css" rel="stylesheet">
     <style>
         .stats-card { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
         .device-card { cursor: pointer; transition: transform 0.2s; }
@@ -136,8 +132,6 @@ $stmt->execute([$offline_threshold]);
     
     <div class="container">
         <div class="row">
-            <?php // include 'includes/sidebar.php'; ?>
-            
             <main class="px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Panel de Control</h1>
@@ -684,9 +678,6 @@ $stmt->execute([$offline_threshold]);
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="assets/js/script.js"></script>
     <script>
         // Variables globales
         const selectedDeviceId = '<?php echo $selected_device['device_id'] ?? ''; ?>';

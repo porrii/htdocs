@@ -28,43 +28,29 @@ body {
 }
 
 /* Sidebar */
-.sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: var(--sidebar-width);
-    height: 100vh;
-    background: linear-gradient(180deg, var(--primary-color) 0%, #224abe 100%);
-    padding-top: var(--topbar-height);
-    z-index: 1000;
-    transition: all 0.3s ease;
+/* Estilo del submenú collapse dentro del offcanvas */
+.offcanvas .user-submenu .dropdown-item {
+    padding-left: 1rem;
+    padding-right: 1rem;
 }
 
-.sidebar .nav-link {
-    color: rgba(255, 255, 255, 0.8);
-    padding: 1rem 1.5rem;
-    transition: all 0.3s ease;
+/* Icono chevron rotatorio */
+.chevron-rotate {
+    transition: transform .2s ease;
+}
+.chevron-rotate.rotate {
+    transform: rotate(180deg);
 }
 
-.sidebar .nav-link:hover {
-    color: #fff;
-    background-color: rgba(255, 255, 255, 0.1);
+/* Asegurar buena separación en offcanvas */
+.offcanvas .navbar-nav .nav-item + .nav-item {
+    margin-top: .5rem;
 }
 
-.sidebar .nav-link.active {
-    color: #fff;
-    background-color: rgba(255, 255, 255, 0.2);
-    font-weight: 700;
-}
-
-.sidebar .nav-link i {
-    margin-right: 0.5rem;
-}
-
-/* Header */
-.navbar {
-    height: var(--topbar-height);
-    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+/* Badge de notificaciones */
+.notification-badge {
+    font-size: 0.7rem;
+    padding: 3px 6px;
 }
 
 /* Main content */

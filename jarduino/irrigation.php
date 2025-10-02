@@ -1,54 +1,54 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'includes/auth.php';
+    session_start();
+    require_once 'config/database.php';
+    require_once 'includes/auth.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: login.php");
+        exit();
+    }
 
-$user_id = $_SESSION['user_id'];
+    $user_id = $_SESSION['user_id'];
 
-// Obtener dispositivos del usuario
-$stmt = $pdo->prepare("SELECT * FROM devices WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Obtener dispositivos del usuario
+    $stmt = $pdo->prepare("SELECT * FROM devices WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Obtener registros de riego para todos los dispositivos del usuario
-$irrigation_logs = [];
-if (!empty($devices)) {
-    $device_ids = array_column($devices, 'device_id');
-    $placeholders = implode(',', array_fill(0, count($device_ids), '?'));
-    
-    $stmt = $pdo->prepare("
-        SELECT il.*, d.name as device_name 
-        FROM irrigation_log il 
-        JOIN devices d ON il.device_id = d.device_id 
-        WHERE il.device_id IN ($placeholders) 
-        ORDER BY il.created_at DESC 
-        LIMIT 20
-    ");
-    $stmt->execute($device_ids);
-    $irrigation_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+    // Obtener registros de riego para todos los dispositivos del usuario
+    $irrigation_logs = [];
+    if (!empty($devices)) {
+        $device_ids = array_column($devices, 'device_id');
+        $placeholders = implode(',', array_fill(0, count($device_ids), '?'));
+        
+        $stmt = $pdo->prepare("
+            SELECT il.*, d.name as device_name 
+            FROM irrigation_log il 
+            JOIN devices d ON il.device_id = d.device_id 
+            WHERE il.device_id IN ($placeholders) 
+            ORDER BY il.created_at DESC 
+            LIMIT 20
+        ");
+        $stmt->execute($device_ids);
+        $irrigation_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-// Obtener programaciones de riego
-$schedules = [];
-if (!empty($devices)) {
-    $device_ids = array_column($devices, 'device_id');
-    $placeholders = implode(',', array_fill(0, count($device_ids), '?'));
-    
-    $stmt = $pdo->prepare("
-        SELECT s.*, d.name as device_name 
-        FROM irrigation_schedules s 
-        JOIN devices d ON s.device_id = d.device_id 
-        WHERE s.device_id IN ($placeholders) 
-        ORDER BY s.active DESC, s.start_time ASC
-    ");
-    $stmt->execute($device_ids);
-    $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+    // Obtener programaciones de riego
+    $schedules = [];
+    if (!empty($devices)) {
+        $device_ids = array_column($devices, 'device_id');
+        $placeholders = implode(',', array_fill(0, count($device_ids), '?'));
+        
+        $stmt = $pdo->prepare("
+            SELECT s.*, d.name as device_name 
+            FROM irrigation_schedules s 
+            JOIN devices d ON s.device_id = d.device_id 
+            WHERE s.device_id IN ($placeholders) 
+            ORDER BY s.active DESC, s.start_time ASC
+        ");
+        $stmt->execute($device_ids);
+        $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -56,16 +56,12 @@ if (!empty($devices)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Riego - SmartGarden</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
     <?php include 'includes/header.php'; ?>
+
     <div class="container">
         <div class="row">
-            <?php // include 'includes/sidebar.php'; ?>
             <main class="px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Control de Riego</h1>
@@ -345,46 +341,43 @@ if (!empty($devices)) {
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="assets/js/script.js"></script>
     <script>
-    // Filtrar historial según dispositivo seleccionado
-    document.getElementById('deviceSelect').addEventListener('change', function() {
-        const selectedDevice = this.value;
+        // Filtrar historial según dispositivo seleccionado
+        document.getElementById('deviceSelect').addEventListener('change', function() {
+            const selectedDevice = this.value;
 
-        // Filtrar historial
-        document.querySelectorAll('table tbody tr').forEach(row => {
-            row.style.display = (!selectedDevice || row.getAttribute('data-device-id') === selectedDevice) ? '' : 'none';
-        });
+            // Filtrar historial
+            document.querySelectorAll('table tbody tr').forEach(row => {
+                row.style.display = (!selectedDevice || row.getAttribute('data-device-id') === selectedDevice) ? '' : 'none';
+            });
 
-        // Filtrar estadísticas
-        document.querySelectorAll('.device-stats').forEach(stat => {
-            stat.style.display = (!selectedDevice || stat.getAttribute('data-device-id') === selectedDevice) ? '' : 'none';
-        });
+            // Filtrar estadísticas
+            document.querySelectorAll('.device-stats').forEach(stat => {
+                stat.style.display = (!selectedDevice || stat.getAttribute('data-device-id') === selectedDevice) ? '' : 'none';
+            });
 
-        // Filtrar programaciones
-        document.querySelectorAll('.schedule-item').forEach(schedule => {
-            schedule.style.display = (!selectedDevice || schedule.getAttribute('data-device-id') === selectedDevice) ? '' : 'none';
-        });
-    });
-
-    // Filtrar automáticamente al cargar la página si hay un dispositivo seleccionado
-    window.addEventListener('DOMContentLoaded', () => {
-        const select = document.getElementById('deviceSelect');
-        if (select.value) {
-            select.dispatchEvent(new Event('change'));
-        }
-
-        // Switches de programación
-        document.querySelectorAll('.schedule-status').forEach(switchEl => {
-            switchEl.addEventListener('change', function() {
-                const scheduleId = this.getAttribute('data-schedule-id');
-                const active = this.checked ? 1 : 0;
-                updateScheduleStatus(scheduleId, active);
+            // Filtrar programaciones
+            document.querySelectorAll('.schedule-item').forEach(schedule => {
+                schedule.style.display = (!selectedDevice || schedule.getAttribute('data-device-id') === selectedDevice) ? '' : 'none';
             });
         });
-    });
+
+        // Filtrar automáticamente al cargar la página si hay un dispositivo seleccionado
+        window.addEventListener('DOMContentLoaded', () => {
+            const select = document.getElementById('deviceSelect');
+            if (select.value) {
+                select.dispatchEvent(new Event('change'));
+            }
+
+            // Switches de programación
+            document.querySelectorAll('.schedule-status').forEach(switchEl => {
+                switchEl.addEventListener('change', function() {
+                    const scheduleId = this.getAttribute('data-schedule-id');
+                    const active = this.checked ? 1 : 0;
+                    updateScheduleStatus(scheduleId, active);
+                });
+            });
+        });
     </script>
 </body>
 </html>

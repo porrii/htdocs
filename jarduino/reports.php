@@ -1,123 +1,123 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'includes/auth.php';
+    session_start();
+    require_once 'config/database.php';
+    require_once 'includes/auth.php';
 
-// Verificar autenticación
-if (!isAuthenticated()) {
-    header("Location: login.php");
-    exit();
-}
+    // Verificar autenticación
+    if (!isAuthenticated()) {
+        header("Location: login.php");
+        exit();
+    }
 
-$user_id = $_SESSION['user_id'];
-$device_id = isset($_GET['device']) ? $_GET['device'] : null;
-$report_type = isset($_GET['type']) ? $_GET['type'] : 'daily';
-$date_range = isset($_GET['date_range']) ? $_GET['date_range'] : '7days';
+    $user_id = $_SESSION['user_id'];
+    $device_id = isset($_GET['device']) ? $_GET['device'] : null;
+    $report_type = isset($_GET['type']) ? $_GET['type'] : 'daily';
+    $date_range = isset($_GET['date_range']) ? $_GET['date_range'] : '7days';
 
-// Obtener dispositivos para el filtro
-$stmt = $pdo->prepare("SELECT device_id, name FROM devices WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Obtener dispositivos para el filtro
+    $stmt = $pdo->prepare("SELECT device_id, name FROM devices WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Calcular fechas según el rango seleccionado
-$date_conditions = [];
-$params = [$user_id];
+    // Calcular fechas según el rango seleccionado
+    $date_conditions = [];
+    $params = [$user_id];
 
-switch ($date_range) {
-    case 'today':
-        $date_conditions[] = "DATE(il.created_at) = CURDATE()";
-        break;
-    case 'yesterday':
-        $date_conditions[] = "DATE(il.created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
-        break;
-    case '7days':
-        $date_conditions[] = "il.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
-        break;
-    case '30days':
-        $date_conditions[] = "il.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
-        break;
-    case 'month':
-        $date_conditions[] = "MONTH(il.created_at) = MONTH(CURDATE()) AND YEAR(il.created_at) = YEAR(CURDATE())";
-        break;
-    case 'custom':
-        if (isset($_GET['start_date']) && isset($_GET['end_date'])) {
-            $date_conditions[] = "DATE(il.created_at) BETWEEN ? AND ?";
-            $params[] = $_GET['start_date'];
-            $params[] = $_GET['end_date'];
-        }
-        break;
-}
+    switch ($date_range) {
+        case 'today':
+            $date_conditions[] = "DATE(il.created_at) = CURDATE()";
+            break;
+        case 'yesterday':
+            $date_conditions[] = "DATE(il.created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+            break;
+        case '7days':
+            $date_conditions[] = "il.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+            break;
+        case '30days':
+            $date_conditions[] = "il.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+            break;
+        case 'month':
+            $date_conditions[] = "MONTH(il.created_at) = MONTH(CURDATE()) AND YEAR(il.created_at) = YEAR(CURDATE())";
+            break;
+        case 'custom':
+            if (isset($_GET['start_date']) && isset($_GET['end_date'])) {
+                $date_conditions[] = "DATE(il.created_at) BETWEEN ? AND ?";
+                $params[] = $_GET['start_date'];
+                $params[] = $_GET['end_date'];
+            }
+            break;
+    }
 
-// Añadir filtro de dispositivo si está seleccionado
-if ($device_id) {
-    $date_conditions[] = "il.device_id = ?";
-    $params[] = $device_id;
-}
+    // Añadir filtro de dispositivo si está seleccionado
+    if ($device_id) {
+        $date_conditions[] = "il.device_id = ?";
+        $params[] = $device_id;
+    }
 
-$where_clause = !empty($date_conditions) ? "AND " . implode(" AND ", $date_conditions) : "";
+    $where_clause = !empty($date_conditions) ? "AND " . implode(" AND ", $date_conditions) : "";
 
-// Obtener estadísticas de riego
-$stmt = $pdo->prepare("
-    SELECT 
-        COUNT(*) as total_irrigations,
-        SUM(il.duration) as total_duration,
-        AVG(il.duration) as avg_duration,
-        d.name as device_name,
-        DATE(il.created_at) as irrigation_date
-    FROM irrigation_log il
-    JOIN devices d ON il.device_id = d.device_id
-    WHERE d.user_id = ? $where_clause
-    GROUP BY DATE(il.created_at), il.device_id
-    ORDER BY irrigation_date DESC
-");
-$stmt->execute($params);
-$irrigation_stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Obtener datos para gráficos
-$chart_data = [];
-if ($device_id) {
-    // Datos de humedad del suelo para el gráfico
+    // Obtener estadísticas de riego
     $stmt = $pdo->prepare("
         SELECT 
-            DATE(created_at) as date,
-            AVG(soil_moisture) as avg_moisture,
-            MIN(soil_moisture) as min_moisture,
-            MAX(soil_moisture) as max_moisture
-        FROM sensor_data 
-        WHERE device_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-        GROUP BY DATE(created_at)
-        ORDER BY date ASC
+            COUNT(*) as total_irrigations,
+            SUM(il.duration) as total_duration,
+            AVG(il.duration) as avg_duration,
+            d.name as device_name,
+            DATE(il.created_at) as irrigation_date
+        FROM irrigation_log il
+        JOIN devices d ON il.device_id = d.device_id
+        WHERE d.user_id = ? $where_clause
+        GROUP BY DATE(il.created_at), il.device_id
+        ORDER BY irrigation_date DESC
     ");
-    $stmt->execute([$device_id]);
-    $moisture_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Preparar datos para el gráfico
-    $chart_labels = [];
-    $chart_avg = [];
-    $chart_min = [];
-    $chart_max = [];
-    
-    foreach ($moisture_data as $data) {
-        $chart_labels[] = date('d M', strtotime($data['date']));
-        $chart_avg[] = $data['avg_moisture'];
-        $chart_min[] = $data['min_moisture'];
-        $chart_max[] = $data['max_moisture'];
-    }
-    
-    $chart_data = [
-        'labels' => $chart_labels,
-        'avg' => $chart_avg,
-        'min' => $chart_min,
-        'max' => $chart_max
-    ];
-}
+    $stmt->execute($params);
+    $irrigation_stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Generar reporte PDF
-if (isset($_GET['export']) && $_GET['export'] == 'pdf') {
-    require_once 'includes/pdf_generator.php';
-    generateIrrigationReportPDF($irrigation_stats, $date_range, $device_id);
-    exit();
-}
+    // Obtener datos para gráficos
+    $chart_data = [];
+    if ($device_id) {
+        // Datos de humedad del suelo para el gráfico
+        $stmt = $pdo->prepare("
+            SELECT 
+                DATE(created_at) as date,
+                AVG(soil_moisture) as avg_moisture,
+                MIN(soil_moisture) as min_moisture,
+                MAX(soil_moisture) as max_moisture
+            FROM sensor_data 
+            WHERE device_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        ");
+        $stmt->execute([$device_id]);
+        $moisture_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Preparar datos para el gráfico
+        $chart_labels = [];
+        $chart_avg = [];
+        $chart_min = [];
+        $chart_max = [];
+        
+        foreach ($moisture_data as $data) {
+            $chart_labels[] = date('d M', strtotime($data['date']));
+            $chart_avg[] = $data['avg_moisture'];
+            $chart_min[] = $data['min_moisture'];
+            $chart_max[] = $data['max_moisture'];
+        }
+        
+        $chart_data = [
+            'labels' => $chart_labels,
+            'avg' => $chart_avg,
+            'min' => $chart_min,
+            'max' => $chart_max
+        ];
+    }
+
+    // Generar reporte PDF
+    if (isset($_GET['export']) && $_GET['export'] == 'pdf') {
+        require_once 'includes/pdf_generator.php';
+        generateIrrigationReportPDF($irrigation_stats, $date_range, $device_id);
+        exit();
+    }
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -125,18 +125,13 @@ if (isset($_GET['export']) && $_GET['export'] == 'pdf') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartGarden - Reportes y Análisis</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
+
     <?php include 'includes/header.php'; ?>
     
     <div class="container">
-        <div class="row">
-            <?php // include 'includes/sidebar.php'; ?>
-            
+        <div class="row">            
             <main class="px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Reportes y Análisis</h1>
@@ -369,7 +364,6 @@ if (isset($_GET['export']) && $_GET['export'] == 'pdf') {
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Mostrar/ocultar campos de fecha personalizada
         document.getElementById('date_range').addEventListener('change', function() {

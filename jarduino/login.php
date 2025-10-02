@@ -28,6 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
             $_SESSION['username'] = $user['username'];
             $_SESSION['email'] = $user['email'];
             $_SESSION['role'] = $user['role'];
+            $_SESSION['dark_mode'] = $user['dark_mode'];
+            $_SESSION['timezone'] = $user['timezone'];
+            $_SESSION['language'] = $user['language'];
             
             // Redirigir al dashboard
             header("Location: index.php");

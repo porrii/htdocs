@@ -1,11 +1,10 @@
 Administración: poder editar usuarios y dispositivos, datos, contraseña, etc...
-Implementar preferencias de usuario en el login para que se utilicen en variables de session
-Paginacion en history?
+
+Quitar script y css de archivos y meter al header
 
 Programación de riego no se ejecuta(probar con cron)
 
 function editSchedule sin desarrollar(script.js)
-Unificar inclusion de enlaces de los .php al header.php
 
 La web debe poder recibir y guardar en bd:
     config: {"device":"ARD1","auto":true,"threshold":59,"autoSec":15,"wifi":"MiRed","mqtt":"192.168.1.50"}

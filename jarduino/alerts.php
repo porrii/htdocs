@@ -1,86 +1,86 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'includes/auth.php';
+    session_start();
+    require_once 'config/database.php';
+    require_once 'includes/auth.php';
 
-// Verificar autenticación
-if (!isAuthenticated()) {
-    header("Location: login.php");
-    exit();
-}
-
-$user_id = $_SESSION['user_id'];
-$device_id = isset($_GET['device']) ? $_GET['device'] : null;
-
-// Obtener alertas
-$where_conditions = ["d.user_id = ?"];
-$params = [$user_id];
-
-if ($device_id) {
-    $where_conditions[] = "a.device_id = ?";
-    $params[] = $device_id;
-}
-
-$where_clause = implode(" AND ", $where_conditions);
-
-$stmt = $pdo->prepare("
-    SELECT a.*, d.name as device_name 
-    FROM alerts a 
-    JOIN devices d ON a.device_id = d.device_id 
-    WHERE $where_clause 
-    ORDER BY a.created_at DESC
-");
-$stmt->execute($params);
-$alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Obtener dispositivos para el filtro
-$stmt = $pdo->prepare("SELECT device_id, name FROM devices WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Procesar resolución de alertas
-if (isset($_POST['resolve_alert'])) {
-    $alert_id = $_POST['alert_id'];
-    
-    // Verificar que la alerta pertenece al usuario
-    $stmt = $pdo->prepare("
-        SELECT a.id 
-        FROM alerts a 
-        JOIN devices d ON a.device_id = d.device_id 
-        WHERE a.id = ? AND d.user_id = ?
-    ");
-    $stmt->execute([$alert_id, $user_id]);
-    
-    if ($stmt->fetch()) {
-        $stmt = $pdo->prepare("UPDATE alerts SET resolved = 1 WHERE id = ?");
-        $stmt->execute([$alert_id]);
-        
-        header("Location: alerts.php?" . http_build_query($_GET));
+    // Verificar autenticación
+    if (!isAuthenticated()) {
+        header("Location: login.php");
         exit();
     }
-}
 
-// Procesar eliminación de alertas
-if (isset($_POST['delete_alert'])) {
-    $alert_id = $_POST['alert_id'];
-    
-    // Verificar que la alerta pertenece al usuario
+    $user_id = $_SESSION['user_id'];
+    $device_id = isset($_GET['device']) ? $_GET['device'] : null;
+
+    // Obtener alertas
+    $where_conditions = ["d.user_id = ?"];
+    $params = [$user_id];
+
+    if ($device_id) {
+        $where_conditions[] = "a.device_id = ?";
+        $params[] = $device_id;
+    }
+
+    $where_clause = implode(" AND ", $where_conditions);
+
     $stmt = $pdo->prepare("
-        SELECT a.id 
+        SELECT a.*, d.name as device_name 
         FROM alerts a 
         JOIN devices d ON a.device_id = d.device_id 
-        WHERE a.id = ? AND d.user_id = ?
+        WHERE $where_clause 
+        ORDER BY a.created_at DESC
     ");
-    $stmt->execute([$alert_id, $user_id]);
-    
-    if ($stmt->fetch()) {
-        $stmt = $pdo->prepare("DELETE FROM alerts WHERE id = ?");
-        $stmt->execute([$alert_id]);
+    $stmt->execute($params);
+    $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Obtener dispositivos para el filtro
+    $stmt = $pdo->prepare("SELECT device_id, name FROM devices WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Procesar resolución de alertas
+    if (isset($_POST['resolve_alert'])) {
+        $alert_id = $_POST['alert_id'];
         
-        header("Location: alerts.php?" . http_build_query($_GET));
-        exit();
+        // Verificar que la alerta pertenece al usuario
+        $stmt = $pdo->prepare("
+            SELECT a.id 
+            FROM alerts a 
+            JOIN devices d ON a.device_id = d.device_id 
+            WHERE a.id = ? AND d.user_id = ?
+        ");
+        $stmt->execute([$alert_id, $user_id]);
+        
+        if ($stmt->fetch()) {
+            $stmt = $pdo->prepare("UPDATE alerts SET resolved = 1 WHERE id = ?");
+            $stmt->execute([$alert_id]);
+            
+            header("Location: alerts.php?" . http_build_query($_GET));
+            exit();
+        }
     }
-}
+
+    // Procesar eliminación de alertas
+    if (isset($_POST['delete_alert'])) {
+        $alert_id = $_POST['alert_id'];
+        
+        // Verificar que la alerta pertenece al usuario
+        $stmt = $pdo->prepare("
+            SELECT a.id 
+            FROM alerts a 
+            JOIN devices d ON a.device_id = d.device_id 
+            WHERE a.id = ? AND d.user_id = ?
+        ");
+        $stmt->execute([$alert_id, $user_id]);
+        
+        if ($stmt->fetch()) {
+            $stmt = $pdo->prepare("DELETE FROM alerts WHERE id = ?");
+            $stmt->execute([$alert_id]);
+            
+            header("Location: alerts.php?" . http_build_query($_GET));
+            exit();
+        }
+    }
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -88,17 +88,13 @@ if (isset($_POST['delete_alert'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartGarden - Gestión de Alertas</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body>
+
     <?php include 'includes/header.php'; ?>
     
     <div class="container">
-        <div class="row">
-            <?php // include 'includes/sidebar.php'; ?>
-            
+        <div class="row">            
             <main class="px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Gestión de Alertas</h1>
@@ -242,6 +238,5 @@ if (isset($_POST['delete_alert'])) {
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
