@@ -3,7 +3,15 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Usuario: imagen o iniciales
+require_once 'config/database.php';
+require_once 'includes/auth.php';
+
+// Verificar autenticación
+requireAuth();
+
+// Usuario:
+$user_id = $_SESSION['user_id'];
+$user_email = $_SESSION['email'];
 $username = $_SESSION['username'] ?? 'Usuario';
 $userImage = $_SESSION['user_image'] ?? null; // null si no hay imagen
 $initials = implode('', array_map(function($part){ return strtoupper($part[0]); }, explode(' ', $username)));
@@ -13,7 +21,7 @@ $initials = implode('', array_map(function($part){ return strtoupper($part[0]); 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartGarden - Sistema de Riego Inteligente</title>
+    <title><?php echo $title ?? 'SmartGarden - Sistema de Riego Inteligente'; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">

@@ -1,5 +1,13 @@
 <?php
 // Configuración de la base de datos
+
+// Docker
+// $host = 'mysql';
+// $dbname = 'smartgarden_db';
+// $username = 'root';
+// $password = 'rootpassword';
+
+// XAMPP
 $host = 'localhost';
 $dbname = 'smartgarden_db';
 $username = 'root';

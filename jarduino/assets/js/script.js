@@ -211,6 +211,9 @@ function saveIrrigationConfig(deviceId) {
     showAlert('Configuración enviada correctamente.');
 }
 
+/****************************************************
+ * 📌 FUNCIONES DE PROGRAMACION DE RIEGO
+ ****************************************************/
 // Añadir programación de riego
 function addIrrigationSchedule() {
     const form = document.getElementById('addScheduleForm');
@@ -269,34 +272,164 @@ function addIrrigationSchedule() {
 
 // Editar programación (placeholder)
 function editSchedule(scheduleId) {
-    alert('Funcionalidad de edición en desarrollo. Schedule ID: ' + scheduleId);
+    // Pedir los datos del schedule al servidor
+    fetch('api/get_schedule.php?id=' + scheduleId)
+        .then(response => response.json())
+        .then(schedule => {
+            if (!schedule.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: schedule.message || 'No se pudo cargar la programación.'
+                });
+                return;
+            }
+
+            const data = schedule.data; // objeto con los campos del schedule
+
+            // Rellenar modal
+            document.getElementById('editScheduleId').value = data.schedule_id;
+            document.getElementById('editDeviceId').value = data.device_id;
+            document.getElementById('editScheduleStartTime').value = data.start_time;
+            document.getElementById('editScheduleDuration').value = data.duration;
+
+            // Resetear checkboxes de días
+            for (let i = 1; i <= 7; i++) {
+                document.getElementById('editDay' + i).checked = false;
+            }
+
+            // Marcar días recibidos
+            if (data.days_of_week) {
+                const days = data.days_of_week.split(',');
+                days.forEach(d => {
+                    const checkbox = document.getElementById('editDay' + d);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+
+            // Estado activo
+            document.getElementById('editScheduleActive').checked = (data.active == 1);
+
+            // Abrir modal
+            const modal = new bootstrap.Modal(document.getElementById('editScheduleModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error al cargar schedule:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Ocurrió un error al cargar la programación.'
+            });
+        });
+}
+
+function editIrrigationSchedule() {
+    const form = document.getElementById('editScheduleForm');
+    const formData = new FormData(form);
+
+    // Convertir días seleccionados
+    const days = Array.from(formData.getAll('days[]')).join(',');
+
+    const scheduleData = {
+        schedule_id: formData.get('schedule_id'),
+        device_id: formData.get('device_id'),
+        start_time: formData.get('start_time'),
+        duration: formData.get('duration'),
+        days_of_week: days,
+        active: document.getElementById('editScheduleActive').checked ? 1 : 0
+    };
+
+    fetch('api/update_schedule.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(scheduleData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Programación Actualizada',
+                text: 'La programación se ha editado correctamente.',
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editScheduleModal'));
+                modal.hide();
+                location.reload();
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'No se pudo actualizar la programación.'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Ocurrió un error al actualizar la programación.'
+        });
+    });
 }
 
 // Eliminar programación
 function deleteSchedule(scheduleId) {
-    if (confirm('¿Está seguro de que desea eliminar esta programación?')) {
-        fetch('api/delete_schedule.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                schedule_id: scheduleId
+    Swal.fire({
+        title: '¿Está seguro?',
+        text: 'Esta acción eliminará la programación seleccionada.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('api/delete_schedule.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ schedule_id: scheduleId })
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Programación eliminada correctamente');
-                window.location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('Error de conexión: ' + error);
-        });
-    }
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Programación eliminada',
+                        text: 'La programación se ha eliminado correctamente.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('addScheduleModal'));
+                        if (modal) modal.hide();
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'No se pudo eliminar la programación.'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Ocurrió un error al intentar eliminar la programación.'
+                });
+            });
+        }
+    });
 }
 
 // Actualizar estado de programación
@@ -327,6 +460,7 @@ function updateScheduleStatus(scheduleId, active) {
         switchEl.checked = !switchEl.checked;
     });
 }
+
 /****************************************************
  * 📌 FUNCIONES DE BASE DE DATOS
  ****************************************************/
@@ -444,28 +578,214 @@ function updateSensorChart(temp, hum, soil) {
  ****************************************************/
 
 function addDevice() {
-    const deviceId = document.getElementById('deviceId').value;
-    const deviceName = document.getElementById('deviceName').value;
-    
+    const deviceId = document.getElementById('deviceId').value.trim();
+    const userId = document.getElementById('userId').value.trim();
+    const deviceName = document.getElementById('deviceName').value.trim();
+    // const description = document.getElementById('deviceDescription').value.trim();
+    const location = document.getElementById('deviceLocation').value.trim();
+    const latitude = document.getElementById('deviceLatitude').value ? parseFloat(document.getElementById('deviceLatitude').value) : null;
+    const longitude = document.getElementById('deviceLongitude').value ? parseFloat(document.getElementById('deviceLongitude').value) : null;
+
+    if (!deviceId || !deviceName) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Campos obligatorios',
+            text: 'Por favor, complete los campos obligatorios.'
+        });
+        return;
+    }
+
     fetch('api/add_device.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, deviceName })
+        body: JSON.stringify({
+            device_id: deviceId,
+            user_id: userId,
+            name: deviceName,      
+            location: location,
+            latitude: latitude,
+            longitude: longitude
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Dispositivo ' + deviceName + ' añadido correctamente', 'success');
-            // Cerrar modal con Bootstrap 5
-            const addDeviceModal = document.getElementById('addDeviceModal');
-            const modal = bootstrap.Modal.getOrCreateInstance(addDeviceModal);
-            modal.hide();
-            setTimeout(() => location.reload(), 1000);
+            Swal.fire({
+                icon: 'success',
+                title: 'Dispositivo añadido',
+                text: `El dispositivo "${deviceName}" se ha añadido correctamente.`,
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('addDeviceModal'));
+                modal.hide();
+                location.reload();
+            });
         } else {
-            showAlert('Error: ' + data.message, 'danger');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'No se pudo añadir el dispositivo.'
+            });
+            console.error('ERRORRRR:', data.message);
         }
     })
-    .catch(error => showAlert('Error de conexión: ' + error, 'danger'));
+    .catch(error => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: error
+        });
+    });
+}
+
+// Editar dispositivo
+function editDevice(deviceId) {
+    fetch('api/get_device.php?id=' + encodeURIComponent(deviceId))
+        .then(response => response.json())
+        .then(device => {
+            if (!device.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: device.message || 'No se pudo cargar el dispositivo.'
+                });
+                return;
+            }
+
+            const data = device.data;
+
+            // Rellenar modal
+            document.getElementById('editDeviceId').value = data.device_id ?? '';
+            document.getElementById('editDeviceName').value = data.name ?? '';
+            document.getElementById('editDeviceLocation').value = data.location ?? '';
+            document.getElementById('editDeviceLatitude').value = data.latitude !== null ? parseFloat(data.latitude) : '';
+            document.getElementById('editDeviceLongitude').value = data.longitude !== null ? parseFloat(data.longitude) : '';
+            document.getElementById('editSoilThreshold').value = data.threshold !== null ? parseFloat(data.threshold) : '';
+            document.getElementById('editIrrigationDuration').value = data.duration !== null ? parseInt(data.duration) : '';
+            document.getElementById('editAutoIrrigation').checked = data.auto_irrigation == 1;
+
+            // Abrir modal y fijar foco en el primer input
+            const modalEl = document.getElementById('editDeviceModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            modalEl.querySelector('#editDeviceName').focus(); // evita foco en btn-close y la advertencia aria-hidden
+        })
+        .catch(error => {
+            console.error('Error al cargar dispositivo:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Ocurrió un error al cargar el dispositivo.'
+            });
+        });
+}
+
+function updateDevice() {
+    const deviceId = document.getElementById('editDeviceId').value;
+    const name = document.getElementById('editDeviceName').value.trim();
+    const location = document.getElementById('editDeviceLocation').value.trim();
+    const latitude = document.getElementById('editDeviceLatitude').value ? parseFloat(document.getElementById('editDeviceLatitude').value) : null;
+    const longitude = document.getElementById('editDeviceLongitude').value ? parseFloat(document.getElementById('editDeviceLongitude').value) : null;
+    const soil_threshold = document.getElementById('editSoilThreshold').value ? parseFloat(document.getElementById('editSoilThreshold').value) : null;
+    const irrigation_duration = document.getElementById('editIrrigationDuration').value ? parseInt(document.getElementById('editIrrigationDuration').value) : null;
+    const auto_irrigation = document.getElementById('editAutoIrrigation').checked ? 1 : 0;
+
+    fetch('api/update_device.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            device_id: deviceId,
+            name,
+            location,
+            latitude,
+            longitude,
+            auto_irrigation,
+            soil_threshold,
+            irrigation_duration
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Dispositivo actualizado',
+                text: `El dispositivo "${name}" se ha actualizado correctamente.`,
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editDeviceModal'));
+                modal.hide();
+                location.reload();
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'No se pudo actualizar el dispositivo.'
+            });
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: error
+        });
+    });
+}
+
+function deleteDevice(deviceId) {
+    Swal.fire({
+        title: '¿Está seguro?',
+        text: 'Esta acción eliminará el dispositivo seleccionado.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('api/delete_device.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ device_id: deviceId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Dispositivo eliminado',
+                        text: 'El dispositivo se ha eliminado correctamente.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('addDeviceModal'));
+                        if (modal) modal.hide();
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'No se pudo eliminar el dispositivo.'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Ocurrió un error al intentar eliminar el dispositivo.'
+                });
+            });
+        }
+    });
 }
 
 // Verificar timeout de dispositivos
@@ -551,11 +871,32 @@ function getSelectedDeviceId() {
 }
 
 function showAlert(message, type) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-    alertDiv.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-    document.querySelector('main').prepend(alertDiv);
-    setTimeout(() => alertDiv.remove(), 5000);
+    let icon = 'info';
+    let title = 'Información';
+
+    switch (type) {
+        case 'success':
+            icon = 'success';
+            title = 'Éxito';
+            break;
+        case 'danger':
+        case 'error':
+            icon = 'error';
+            title = 'Error';
+            break;
+        case 'warning':
+            icon = 'warning';
+            title = 'Atención';
+            break;
+    }
+
+    Swal.fire({
+        icon: icon,
+        title: title,
+        text: message,
+        timer: 2000,
+        showConfirmButton: false
+    });
 }
 
 function exportData(type) {
@@ -573,6 +914,35 @@ function exportData(type) {
     if (date_to) url += `&date_to=${date_to}`;
 
     window.location.href = url;
+}
+
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                document.getElementById('deviceLatitude').value = position.coords.latitude;
+                document.getElementById('deviceLongitude').value = position.coords.longitude;
+                
+                // Intentar obtener la dirección inversa
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.display_name) {
+                            document.getElementById('deviceLocation').value = data.display_name;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error getting location name:', error);
+                    });
+            },
+            function(error) {
+                console.error('Error getting location:', error);
+                alert('No se pudo obtener la ubicación actual. Asegúrese de que los servicios de ubicación estén activados.');
+            }
+        );
+    } else {
+        alert('La geolocalización no es compatible con este navegador.');
+    }
 }
 
 /****************************************************

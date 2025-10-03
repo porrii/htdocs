@@ -1,15 +1,9 @@
 <?php
-    session_start();
-    require_once 'config/database.php';
-    require_once 'includes/auth.php';
+    $title = 'SmartGarden - Panel de Administración';
+    include 'includes/header.php';
 
-    // Verificar autenticación y permisos de administrador
-    if (!isAuthenticated() || !hasRole('admin')) {
-        header("Location: index.php");
-        exit();
-    }
-
-    $user_id = $_SESSION['user_id'];
+    // Verificar permisos de administrador
+    requireRol('admin')
 
     // Obtener estadísticas del sistema
     $stats = [];
@@ -105,17 +99,8 @@
         }
     }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartGarden - Panel de Administración</title>
-</head>
-<body>
 
-    <?php include 'includes/header.php'; ?>
-    
+<body>
     <div class="container">
         <div class="row">
             <main class="px-md-4">
@@ -309,4 +294,3 @@
         </div>
     </div>
 </body>
-</html>

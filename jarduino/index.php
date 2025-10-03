@@ -1,15 +1,6 @@
 <?php
-    session_start();
-    require_once 'config/database.php';
-    require_once 'includes/auth.php';
-
-    // Verificar si el usuario está logueado
-    if (!isset($_SESSION['user_id'])) {
-        header("Location: login.php");
-        exit();
-    }
-
-    $user_id = $_SESSION['user_id'];
+    $title = 'SmartGarden Control Panel';
+    include 'includes/header.php';
 
     // Obtener estadísticas generales
     $stats = [];
@@ -107,28 +98,8 @@
     ");
     $stmt->execute([$offline_threshold]);
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartGarden Control Panel</title>
-    <style>
-        .stats-card { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
-        .device-card { cursor: pointer; transition: transform 0.2s; }
-        .device-card:hover { transform: translateY(-5px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .online-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
-        .online { background-color: #1cc88a; }
-        .offline { background-color: #e74a3b; }
-        .pump-active { color: #f6c23e; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        .alert-badge { position: absolute; top: -5px; right: -5px; }
-        .weather-card { background: linear-gradient(45deg, #36b9cc, #2c9faf); color: white; }
-        .consumption-card { background: linear-gradient(45deg, #1cc88a, #17a673); color: white; }
-    </style>
-</head>
+
 <body>
-    <?php include 'includes/header.php'; ?>
     
     <div class="container">
         <div class="row">
@@ -615,68 +586,10 @@
     <?php include 'includes/modal_addDevice.php'; ?>
 
     <!-- Modal Añadir Programación -->
-    <div class="modal fade" id="addScheduleModal" tabindex="-1" aria-labelledby="addScheduleModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addScheduleModalLabel">Añadir Programación de Riego</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addScheduleForm">
-                        <input type="hidden" name="device_id" value="<?php echo $selected_device['device_id'] ?? ''; ?>">
-                        <div class="mb-3">
-                            <label for="scheduleStartTime" class="form-label">Hora de Inicio</label>
-                            <input type="time" class="form-control" id="scheduleStartTime" name="start_time" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="scheduleDuration" class="form-label">Duración (segundos)</label>
-                            <input type="number" class="form-control" id="scheduleDuration" name="duration" min="1" max="300" value="10" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Días de la Semana</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="days[]" value="1" id="day1">
-                                <label class="form-check-label" for="day1">Lunes</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="days[]" value="2" id="day2">
-                                <label class="form-check-label" for="day2">Martes</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="days[]" value="3" id="day3">
-                                <label class="form-check-label" for="day3">Miércoles</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="days[]" value="4" id="day4">
-                                <label class="form-check-label" for="day4">Jueves</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="days[]" value="5" id="day5">
-                                <label class="form-check-label" for="day5">Viernes</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="days[]" value="6" id="day6">
-                                <label class="form-check-label" for="day6">Sábado</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="days[]" value="7" id="day7">
-                                <label class="form-check-label" for="day7">Domingo</label>
-                            </div>
-                        </div>
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="scheduleActive" name="active" checked>
-                            <label class="form-check-label" for="scheduleActive">Programación Activa</label>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="addIrrigationSchedule()">Guardar Programación</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <?php include 'includes/modal_addSchedule.php'; ?>
+
+    <!-- Modal Editar Programación -->
+    <?php include 'includes/modal_editSchedule.php'; ?>
 
     <script>
         // Variables globales
@@ -892,4 +805,3 @@
         });
     </script>
 </body>
-</html>

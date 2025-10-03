@@ -48,7 +48,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
 function verifyCredentials($email, $password) {
     global $pdo;
     
-    $stmt = $pdo->prepare("SELECT u.*, up.* FROM users u INNER JOIN user_preferences up ON u.user_id = up.user_id WHERE u.username = ? OR u.email = ?");
+    $stmt = $pdo->prepare("
+        SELECT u.user_id AS u_user_id, u.username, u.email, u.password, u.role,
+            up.dark_mode, up.timezone, up.language
+        FROM users u
+        LEFT JOIN user_preferences up ON u.user_id = up.user_id
+        WHERE u.username = ? OR u.email = ?
+    ");
     $stmt->execute([$email, $email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -111,22 +117,6 @@ function requireRole($role) {
         echo "No tienes permisos para acceder a esta página.";
         exit();
     }
-}
-
-function addDevice($user_id, $device_id, $name) {
-    global $pdo;
-    
-    // Verificar si el dispositivo ya existe
-    $stmt = $pdo->prepare("SELECT device_id FROM devices WHERE device_id = ?");
-    $stmt->execute([$device_id]);
-    
-    if ($stmt->fetch()) {
-        return false; // Dispositivo ya existe
-    }
-    
-    // Añadir nuevo dispositivo
-    $stmt = $pdo->prepare("INSERT INTO devices (user_id, device_id, name) VALUES (?, ?, ?)");
-    return $stmt->execute([$user_id, $device_id, $name]);
 }
 
 function getUserDevices($user_id) {

@@ -1,14 +1,6 @@
 <?php
-    session_start();
-    require_once 'config/database.php';
-    require_once 'includes/auth.php';
-
-    if (!isset($_SESSION['user_id'])) {
-        header("Location: login.php");
-        exit();
-    }
-
-    $user_id = $_SESSION['user_id'];
+    $title = 'Mis Dispositivos - SmartGarden';
+    include 'includes/header.php';
 
     // Obtener dispositivos del usuario con su configuración
     $stmt = $pdo->prepare("SELECT d.*, dc.auto_irrigation, dc.threshold, dc.duration 
@@ -17,31 +9,6 @@
                         WHERE d.user_id = ?");
     $stmt->execute([$user_id]);
     $devices_bd = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Procesar eliminación de dispositivo
-    if (isset($_GET['delete'])) {
-        $device_id = $_GET['delete'];
-        
-        $stmt = $pdo->prepare("SELECT id FROM devices WHERE device_id = ? AND user_id = ?");
-        $stmt->execute([$device_id, $user_id]);
-        
-        if ($stmt->fetch()) {
-            $pdo->beginTransaction();
-            try {
-                $pdo->prepare("DELETE FROM sensor_data WHERE device_id = ?")->execute([$device_id]);
-                $pdo->prepare("DELETE FROM irrigation_log WHERE device_id = ?")->execute([$device_id]);
-                $pdo->prepare("DELETE FROM device_config WHERE device_id = ?")->execute([$device_id]);
-                $pdo->prepare("DELETE FROM devices WHERE device_id = ?")->execute([$device_id]);
-                $pdo->commit();
-                $success = "Dispositivo eliminado correctamente";
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                $error = "Error al eliminar el dispositivo: " . $e->getMessage();
-            }
-        } else {
-            $error = "Dispositivo no encontrado o no tienes permisos";
-        }
-    }
 
     // Procesar edición de dispositivo
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_device'])) {
@@ -102,15 +69,7 @@
     }
 ?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis Dispositivos - SmartGarden</title>
-</head>
 <body>
-    <?php include 'includes/header.php'; ?>
     
     <div class="container">
         <div class="row">
@@ -192,54 +151,8 @@
                                         </ul>
                                     </div>
                                     <div class="card-footer d-flex justify-content-between">
-                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editDeviceModal<?php echo $device['device_id']; ?>">
-                                            <i class="fas fa-edit me-1"></i>Editar
-                                        </button>
-                                        <a href="?delete=<?php echo $device['device_id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Estás seguro de que quieres eliminar este dispositivo?')">
-                                            <i class="fas fa-trash me-1"></i>Eliminar
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Modal Editar -->
-                            <div class="modal fade" id="editDeviceModal<?php echo $device['device_id']; ?>" tabindex="-1" aria-labelledby="editDeviceModalLabel<?php echo $device['device_id']; ?>" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="editDeviceModalLabel<?php echo $device['device_id']; ?>">Editar Dispositivo</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <form method="POST" id="editDeviceForm<?php echo $device['device_id']; ?>">
-                                            <input type="hidden" name="edit_device" value="1">
-                                            <input type="hidden" name="device_id" value="<?php echo $device['device_id']; ?>">
-                                            <div class="modal-body">
-                                                <div class="mb-3">
-                                                    <label class="form-label">Nombre</label>
-                                                    <input type="text" class="form-control" name="name" value="<?php echo htmlspecialchars($device['name']); ?>" required>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Ubicación</label>
-                                                    <input type="text" class="form-control" name="location" value="<?php echo htmlspecialchars($device['location']); ?>">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Umbral de humedad (%)</label>
-                                                    <input type="number" class="form-control" id="soil_threshold<?php echo $device['device_id']; ?>" name="soil_threshold" min="5" max="95" value="<?php echo $soil_threshold; ?>" required>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Duración riego automático (segundos)</label>
-                                                    <input type="number" class="form-control" id="irrigation_duration<?php echo $device['device_id']; ?>" name="irrigation_duration" min="1" max="300" value="<?php echo $irrigation_duration; ?>" required>
-                                                </div>
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="auto_irrigation<?php echo $device['device_id']; ?>" name="auto_irrigation" <?php echo $auto_irrigation ? 'checked' : ''; ?>>
-                                                    <label class="form-check-label">Riego automático</label>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                <button type="submit" class="btn btn-primary">Guardar cambios</button>
-                                            </div>
-                                        </form>
+                                        <button class="btn btn-outline-primary" onclick="editDevice('<?php echo $device['device_id']; ?>')"><i class="fas fa-edit me-1"></i>Editar</button>
+                                        <button class="btn btn-outline-danger" onclick="deleteDevice('<?php echo $device['device_id']; ?>')">Eliminar</button>
                                     </div>
                                 </div>
                             </div>
@@ -253,5 +166,7 @@
     <!-- Modal Añadir Dispositivo -->
     <?php include 'includes/modal_addDevice.php'; ?>
 
+    <!-- Modal Editar Dispositivo -->
+    <?php include 'includes/modal_editDevice.php'; ?>
+
 </body>
-</html>

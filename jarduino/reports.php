@@ -1,15 +1,7 @@
 <?php
-    session_start();
-    require_once 'config/database.php';
-    require_once 'includes/auth.php';
+    $title = 'SmartGarden - Reportes y Análisis';
+    include 'includes/header.php';
 
-    // Verificar autenticación
-    if (!isAuthenticated()) {
-        header("Location: login.php");
-        exit();
-    }
-
-    $user_id = $_SESSION['user_id'];
     $device_id = isset($_GET['device']) ? $_GET['device'] : null;
     $report_type = isset($_GET['type']) ? $_GET['type'] : 'daily';
     $date_range = isset($_GET['date_range']) ? $_GET['date_range'] : '7days';
@@ -119,16 +111,8 @@
         exit();
     }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartGarden - Reportes y Análisis</title>
-</head>
-<body>
 
-    <?php include 'includes/header.php'; ?>
+<body>
     
     <div class="container">
         <div class="row">            
@@ -435,4 +419,3 @@
         <?php endif; ?>
     </script>
 </body>
-</html>

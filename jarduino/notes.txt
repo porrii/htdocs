@@ -1,25 +1,25 @@
 Administración: poder editar usuarios y dispositivos, datos, contraseña, etc...
 
-Quitar script y css de archivos y meter al header
+Mejorar apariencia eliminar dispositivo
 
-Programación de riego no se ejecuta(probar con cron)
+Futuro:
+    ESP32:
+        Poder definir, modificar desde lcd y web tiempo de envío de datos de sensores
 
-function editSchedule sin desarrollar(script.js)
+    Web:
+        Poder definir, modificar desde lcd y web tiempo de envío de datos de sensores
+        Historial no se actualiza al instante al activar riego
 
-La web debe poder recibir y guardar en bd:
-    config: {"device":"ARD1","auto":true,"threshold":59,"autoSec":15,"wifi":"MiRed","mqtt":"192.168.1.50"}
-    riego: {"device":"ARD1","duration":10,"mode":"auto"}
-    sensores: {"device":"ARD1","pump":false,"t":21.1,"h":47.4,"soil":61,"auto":true,"threshold":55,"autoSec":10,"online":1}
+    APK:
+        Desarrollar apk para el móvil donde conectarse por bluehtoot y mismas opciones que pantalla
 
-La web debe enviar:
-    config: {"device":"ARD1","auto":true,"threshold":59,"autoSec":15}
-    riego: {"device":"ARD1","duration":10,"mode":"manual"}
-    stop: {"device":"ARD1"}
+Info:
+    La web debe poder recibir y guardar en bd:
+        config: {"device":"ARD1","auto":true,"threshold":59,"autoSec":15,"wifi":"MiRed","mqtt":"192.168.1.50"}
+        riego: {"device":"ARD1","duration":10,"mode":"auto"}
+        sensores: {"device":"ARD1","pump":false,"t":21.1,"h":47.4,"soil":61,"auto":true,"threshold":55,"autoSec":10,"online":1}
 
-
-Futuro ESP32:
-    Poder definir, modificar desde lcd y web tiempo de envío de datos de sensores
-
-Futuro web:
-    Poder definir, modificar desde lcd y web tiempo de envío de datos de sensores
-    Historial no se actualiza al instante al activar riego
+    La web debe enviar:
+        config: {"device":"ARD1","auto":true,"threshold":59,"autoSec":15}
+        riego: {"device":"ARD1","duration":10,"mode":"manual"}
+        stop: {"device":"ARD1"}

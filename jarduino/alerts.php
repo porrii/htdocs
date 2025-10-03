@@ -1,15 +1,7 @@
 <?php
-    session_start();
-    require_once 'config/database.php';
-    require_once 'includes/auth.php';
+    $title = 'SmartGarden - Gestión de Alertas';
+    include 'includes/header.php';
 
-    // Verificar autenticación
-    if (!isAuthenticated()) {
-        header("Location: login.php");
-        exit();
-    }
-
-    $user_id = $_SESSION['user_id'];
     $device_id = isset($_GET['device']) ? $_GET['device'] : null;
 
     // Obtener alertas
@@ -82,16 +74,7 @@
         }
     }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartGarden - Gestión de Alertas</title>
-</head>
 <body>
-
-    <?php include 'includes/header.php'; ?>
     
     <div class="container">
         <div class="row">            
@@ -239,4 +222,3 @@
     </div>
 
 </body>
-</html>

@@ -38,6 +38,7 @@ body {
 .chevron-rotate {
     transition: transform .2s ease;
 }
+
 .chevron-rotate.rotate {
     transform: rotate(180deg);
 }
@@ -81,6 +82,18 @@ main {
     color: white;
     border: none;
 }
+
+.stats-card { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
+.device-card { cursor: pointer; transition: transform 0.2s; }
+.device-card:hover { transform: translateY(-5px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+.online-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+.online { background-color: #1cc88a; }
+.offline { background-color: #e74a3b; }
+.pump-active { color: #f6c23e; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+.alert-badge { position: absolute; top: -5px; right: -5px; }
+.weather-card { background: linear-gradient(45deg, #36b9cc, #2c9faf); color: white; }
+.consumption-card { background: linear-gradient(45deg, #1cc88a, #17a673); color: white; }
 
 /* Buttons */
 .btn {

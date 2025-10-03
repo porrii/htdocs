@@ -1,69 +1,69 @@
 <?php
-session_start();
-require_once 'config/database.php';
-require_once 'includes/auth.php';
+    session_start();
+    require_once 'config/database.php';
+    require_once 'includes/auth.php';
 
-// Si ya está autenticado, redirigir al dashboard
-if (isAuthenticated()) {
-    header("Location: index.php");
-    exit();
-}
+    // Si ya está autenticado, redirigir al dashboard
+    if (isAuthenticated()) {
+        header("Location: index.php");
+        exit();
+    }
 
-$error = '';
-$success = '';
+    $error = '';
+    $success = '';
 
-// Procesar inicio de sesión
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
-    
-    if (empty($username) || empty($password)) {
-        $error = 'Por favor, complete todos los campos.';
-    } else {
-        $user = verifyCredentials($username, $password);
+    // Procesar inicio de sesión
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
+        $username = trim($_POST['username']);
+        $password = $_POST['password'];
         
-        if ($user) {
-            // Iniciar sesión
-            $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['email'] = $user['email'];
-            $_SESSION['role'] = $user['role'];
-            $_SESSION['dark_mode'] = $user['dark_mode'];
-            $_SESSION['timezone'] = $user['timezone'];
-            $_SESSION['language'] = $user['language'];
+        if (empty($username) || empty($password)) {
+            $error = 'Por favor, complete todos los campos.';
+        } else {
+            $user = verifyCredentials($username, $password);
             
-            // Redirigir al dashboard
-            header("Location: index.php");
-            exit();
-        } else {
-            $error = 'Credenciales incorrectas.';
+            if ($user) {
+                // Iniciar sesión
+                $_SESSION['user_id'] = $user['u_user_id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['email'] = $user['email'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['dark_mode'] = $user['dark_mode'];
+                $_SESSION['timezone'] = $user['timezone'];
+                $_SESSION['language'] = $user['language'];
+                
+                // Redirigir al dashboard
+                header("Location: index.php");
+                exit();
+            } else {
+                $error = 'Credenciales incorrectas.';
+            }
         }
     }
-}
 
-// Procesar registro
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
-    $username = trim($_POST['new_username']);
-    $email = trim($_POST['email']);
-    $password = $_POST['new_password'];
-    $confirm_password = $_POST['confirm_password'];
-    
-    if (empty($username) || empty($email) || empty($password) || empty($confirm_password)) {
-        $error = 'Por favor, complete todos los campos.';
-    } elseif ($password !== $confirm_password) {
-        $error = 'Las contraseñas no coinciden.';
-    } elseif (strlen($password) < 6) {
-        $error = 'La contraseña debe tener al menos 6 caracteres.';
-    } else {
-        $result = registerUser($username, $email, $password);
+    // Procesar registro
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
+        $username = trim($_POST['new_username']);
+        $email = trim($_POST['email']);
+        $password = $_POST['new_password'];
+        $confirm_password = $_POST['confirm_password'];
         
-        if ($result) {
-            $success = 'Cuenta creada exitosamente. Ahora puede iniciar sesión.';
+        if (empty($username) || empty($email) || empty($password) || empty($confirm_password)) {
+            $error = 'Por favor, complete todos los campos.';
+        } elseif ($password !== $confirm_password) {
+            $error = 'Las contraseñas no coinciden.';
+        } elseif (strlen($password) < 6) {
+            $error = 'La contraseña debe tener al menos 6 caracteres.';
         } else {
-            $error = 'El nombre de usuario o email ya están en uso.';
+            $result = registerUser($username, $email, $password);
+            
+            if ($result) {
+                $success = 'Cuenta creada exitosamente. Ahora puede iniciar sesión.';
+            } else {
+                $error = 'El nombre de usuario o email ya están en uso.';
+            }
         }
     }
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">

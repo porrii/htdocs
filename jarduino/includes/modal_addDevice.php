@@ -8,6 +8,7 @@
             </div>
             <div class="modal-body">
                 <form id="addDeviceForm">
+                    <input type="hidden" id="userId" name="user_id" value="<?php echo $user_id; ?>">
                     <div class="mb-3">
                         <label for="deviceId" class="form-label">ID del Dispositivo *</label>
                         <input type="text" class="form-control" id="deviceId" name="device_id" required 
@@ -18,10 +19,10 @@
                         <label for="deviceName" class="form-label">Nombre del Dispositivo *</label>
                         <input type="text" class="form-control" id="deviceName" name="name" required>
                     </div>
-                    <div class="mb-3">
+                    <!-- <div class="mb-3">
                         <label for="deviceDescription" class="form-label">Descripción</label>
                         <textarea class="form-control" id="deviceDescription" name="description" rows="2"></textarea>
-                    </div>
+                    </div> -->
                     <div class="mb-3">
                         <label for="deviceLocation" class="form-label">Ubicación</label>
                         <input type="text" class="form-control" id="deviceLocation" name="location">
@@ -54,114 +55,3 @@
         </div>
     </div>
 </div>
-
-<script>
-function addDevice() {
-    const deviceId = document.getElementById('deviceId').value;
-    const deviceName = document.getElementById('deviceName').value;
-    const description = document.getElementById('deviceDescription').value;
-    const location = document.getElementById('deviceLocation').value;
-    const latitude = document.getElementById('deviceLatitude').value;
-    const longitude = document.getElementById('deviceLongitude').value;
-    
-    if (!deviceId || !deviceName) {
-        alert('Por favor, complete los campos obligatorios');
-        return;
-    }
-    
-    // Validar formato del ID del dispositivo
-    const idRegex = /^[A-Za-z0-9_-]{3,20}$/;
-    if (!idRegex.test(deviceId)) {
-        alert('El ID del dispositivo debe tener entre 3 y 20 caracteres y solo puede contener letras, números, guiones y guiones bajos.');
-        return;
-    }
-    
-    fetch('../api/add_device.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            device_id: deviceId,
-            name: deviceName,
-            description: description,
-            location: location,
-            latitude: latitude,
-            longitude: longitude
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Mostrar mensaje de éxito
-            showAlert('Dispositivo añadido correctamente', 'success');
-            
-            // Cerrar modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('addDeviceModal'));
-            modal.hide();
-            
-            // Recargar la página después de un breve delay
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        } else {
-            showAlert('Error: ' + data.message, 'danger');
-        }
-    })
-    .catch(error => {
-        showAlert('Error de conexión: ' + error, 'danger');
-    });
-}
-
-function getCurrentLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                document.getElementById('deviceLatitude').value = position.coords.latitude;
-                document.getElementById('deviceLongitude').value = position.coords.longitude;
-                
-                // Intentar obtener la dirección inversa
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.display_name) {
-                            document.getElementById('deviceLocation').value = data.display_name;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error getting location name:', error);
-                    });
-            },
-            function(error) {
-                console.error('Error getting location:', error);
-                alert('No se pudo obtener la ubicación actual. Asegúrese de que los servicios de ubicación estén activados.');
-            }
-        );
-    } else {
-        alert('La geolocalización no es compatible con este navegador.');
-    }
-}
-
-function showAlert(message, type) {
-    // Crear elemento de alerta
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    // Insertar al principio del main
-    const main = document.querySelector('main');
-    if (main) {
-        main.insertBefore(alertDiv, main.firstChild);
-        
-        // Auto-eliminar después de 5 segundos
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.remove();
-            }
-        }, 5000);
-    }
-}
-</script>
