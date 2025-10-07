@@ -29,6 +29,18 @@ document.addEventListener("DOMContentLoaded", () => {
   loadFooterSchedule()
 })
 
+// Load config variables
+fetch('api/config.php')
+  .then(res => res.json())
+  .then(config => {
+    document.querySelector('#site-name').textContent = config.site_name;
+    document.querySelector('#site-location').textContent = config.site_location;
+    document.querySelector('#site-mail').textContent = config.site_mail;
+    document.querySelector('#site-number').textContent = config.site_number;
+    // document.querySelector('#site-url').textContent = config.site_url;
+    document.getElementById('current-year').textContent = new Date().getFullYear();
+  });
+
 // Load services from database
 async function loadServices() {
   try {
@@ -300,6 +312,41 @@ function playVideo(videoUrl) {
   modal.appendChild(videoContainer);
   document.body.appendChild(modal);
 }
+
+// Send contact mail
+document.querySelector('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const nombre = e.target.querySelector('input[type="text"]').value.trim();
+  const email = e.target.querySelector('input[type="email"]').value.trim();
+  const mensaje = e.target.querySelector('textarea').value.trim();
+
+  if (!nombre || !email || !mensaje) {
+      alert('Por favor, completa todos los campos.');
+      return;
+  }
+
+  const data = { nombre, email, mensaje };
+
+  try {
+      const response = await fetch('api/send_contact.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+          e.target.reset();
+      } else {
+          alert('❌ Error: ' + result.message);
+      }
+  } catch (error) {
+      alert('⚠️ Error de conexión. Intenta nuevamente.');
+      console.error(error);
+  }
+});
 
 // Navbar scroll effect
 window.addEventListener("scroll", () => {

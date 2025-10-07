@@ -28,13 +28,11 @@ body {
 }
 
 /* Sidebar */
-/* Estilo del submenú collapse dentro del offcanvas */
 .offcanvas .user-submenu .dropdown-item {
     padding-left: 1rem;
     padding-right: 1rem;
 }
 
-/* Icono chevron rotatorio */
 .chevron-rotate {
     transition: transform .2s ease;
 }
@@ -43,7 +41,6 @@ body {
     transform: rotate(180deg);
 }
 
-/* Asegurar buena separación en offcanvas */
 .offcanvas .navbar-nav .nav-item + .nav-item {
     margin-top: .5rem;
 }
@@ -76,7 +73,6 @@ main {
     font-weight: 700;
 }
 
-/* Stats cards */
 .stats-card {
     background: linear-gradient(45deg, var(--primary-color), #224abe);
     color: white;

@@ -576,7 +576,7 @@ function updateSensorChart(temp, hum, soil) {
 /****************************************************
  * 📌 MANEJO DE DISPOSITIVOS
  ****************************************************/
-
+// Añadir dispositivo
 function addDevice() {
     const deviceId = document.getElementById('deviceId').value.trim();
     const userId = document.getElementById('userId').value.trim();
@@ -736,6 +736,7 @@ function updateDevice() {
     });
 }
 
+// Eliminar dispositivo
 function deleteDevice(deviceId) {
     Swal.fire({
         title: '¿Está seguro?',

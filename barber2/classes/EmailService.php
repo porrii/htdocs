@@ -53,6 +53,18 @@ class EmailService {
         
         return $this->sendEmail($to, $subject, $message);
     }
+
+    public function sendContactEmail($nombre, $email, $mensaje) {
+        $to = $this->config['smtp_username'];
+        $subject = "Nuevo mensaje de contacto de $nombre";
+        $body = "
+            <h2>Nuevo mensaje desde el formulario de contacto</h2>
+            <p><strong>Nombre:</strong> {$nombre}</p>
+            <p><strong>Email:</strong> {$email}</p>
+            <p><strong>Mensaje:</strong><br>{$mensaje}</p>
+        ";
+        return $this->sendEmail($to, $subject, $body);
+    }
     
     private function sendEmail($to, $subject, $message) {
         // Check if SMTP is configured
